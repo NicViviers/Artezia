@@ -1,0 +1,10 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/arteziac",
+    "crates/artezia_diag",
+    "crates/artezia_rt",
+
+    "crates/tia",
+    "crates/tia_jit"
+]

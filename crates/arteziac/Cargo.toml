@@ -1,0 +1,11 @@
+[package]
+name = "arteziac"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+artezia_diag = { path = "../artezia_diag" }
+chumsky = { version = "0.13.0", features = ["pratt"] }
+inkwell = { version = "0.9.0", features = ["llvm22-1"] }
+logos = "0.16.1"
+unicode-ident = "1.0"
