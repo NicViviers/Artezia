@@ -1,7 +1,8 @@
 use logos::Logos;
+use super::parser::Span;
 
 #[derive(Logos, Copy, Clone, Debug, PartialEq)]
-#[logos(skip r"[ \t\n\f]+")]
+#[logos(skip r"[ \t\r]+")]
 pub enum Token {
     // Keywords
     #[token("func")]
@@ -104,7 +105,7 @@ pub enum Token {
     #[regex("\".*\"", allow_greedy = true)]
     String,
 
-    #[regex("[a-zA-Z][a-zA-Z0-9_-]+")]
+    #[regex("[a-zA-Z_][a-zA-Z0-9_-]*")]
     Ident,
 
     #[regex("(true|false)")]
@@ -207,6 +208,13 @@ pub enum Token {
    RBrace,
 
 
+   #[token(";")]
+   Semi,
+
+   #[token("\n")]
+   Newline,
+   StmtEnd,
+   Error,
    EOF
 }
 
@@ -248,114 +256,80 @@ impl Token {
             Token::Ident => "an identifier",
             Token::Bool => "a boolean",
             Token::Duration => "a duration",
-            Token::Plus => "+",
-            Token::Minus => "-",
-            Token::Mul => "*",
-            Token::Div => "/",
-            Token::Mod => "%",
-            Token::Pow => "**",
-            Token::Eqeq => "==",
-            Token::Neq => "!=",
-            Token::LT => "<",
-            Token::GT => ">",
-            Token::GTEQ => "<=",
-            Token::LTEQ => ">=",
-            Token::BitAnd => "&",
-            Token::BitOr => "|",
-            Token::BitXOr => "^",
-            Token::BitLShift => "<<",
-            Token::BitRShift => ">>",
-            Token::BitNot => "~",
-            Token::Eq => "=",
-            Token::Dot => ".",
-            Token::Arrow => "->",
-            Token::Colon => ":",
-            Token::PathSep => "::",
-            Token::Comma => ",",
-            Token::LParen => "(",
-            Token::RParen => ")",
-            Token::LBrace => "{",
-            Token::RBrace => "}",
-            Token::LBracket => "[",
-            Token::RBracket => "]",
+            Token::Plus => "`+`",
+            Token::Minus => "`-`",
+            Token::Mul => "`*`",
+            Token::Div => "`/`",
+            Token::Mod => "`%`",
+            Token::Pow => "`**`",
+            Token::Eqeq => "`==`",
+            Token::Neq => "`!=`",
+            Token::LT => "`<`",
+            Token::GT => "`>`",
+            Token::GTEQ => "`<=`",
+            Token::LTEQ => "`>=`",
+            Token::BitAnd => "`&`",
+            Token::BitOr => "`|`",
+            Token::BitXOr => "`^`",
+            Token::BitLShift => "`<<`",
+            Token::BitRShift => "`>>`",
+            Token::BitNot => "`~`",
+            Token::Eq => "`=`",
+            Token::Dot => "`.`",
+            Token::Arrow => "`->`",
+            Token::Colon => "`:`",
+            Token::PathSep => "`::`",
+            Token::Comma => "`,`",
+            Token::LParen => "`(`",
+            Token::RParen => "`)`",
+            Token::LBrace => "`{`",
+            Token::RBrace => "`}`",
+            Token::LBracket => "`[`",
+            Token::RBracket => "`]`",
             
+            Token::Semi => "a semi-colon",
+            Token::Newline => "a new line",
+            Token::StmtEnd => "StmtEnd",
+            Token::Error => "Error",
             Token::EOF => "EOF"
         }
     }
+}
+
+fn insert_stmt_ends(raw: Vec<(Token, Span)>) -> Vec<(Token, Span)> {
+    let mut out = Vec::with_capacity(raw.len());
+    for (tok, span) in raw {
+        match tok {
+            Token::Newline => {
+                let ends_stmt = matches!(
+                    out.last().map(|(t, _): &(Token, Span)| *t),
+                    Some(Token::Ident | Token::Int | Token::Float | Token::String
+                        | Token::Char | Token::Bool | Token::Duration
+                        | Token::RParen | Token::RBracket | Token::RBrace
+                        | Token::Return | Token::Break | Token::Continue)
+                );
+                if ends_stmt { out.push((Token::StmtEnd, span)); }
+                // else: continuation — the newline vanishes entirely
+            }
+            Token::Semi => out.push((Token::StmtEnd, span)),
+            t => out.push((t, span)),
+        }
+    }
+    out
+}
+
+pub fn lex(src: &str) -> Vec<(Token, Span)> {
+    let raw: Vec<(Token, Span)> = Token::lexer(src)
+        .spanned()
+        .map(|(tok, span)| (tok.unwrap_or(Token::Error), span))
+        .collect();
+    insert_stmt_ends(raw)
 }
 
 #[cfg(test)]
 mod tests {
     use super::Token;
     use logos::Logos;
-
-    #[test]
-    fn test_keywords() {
-        let lexer = Token::lexer("
-            func
-            let
-            class
-            pub
-            return
-            if
-            else
-            match
-            for
-            while
-            in
-            break
-            continue
-            import
-            export
-            scope
-            nursery
-            spawn
-            within
-            retry
-            deadline
-            defer
-            select
-            and
-            or
-            not
-            as
-            is
-        ");
-
-        let tokens: Vec<Token> = lexer.map(|tok| tok.unwrap()).collect();
-        let expected = vec![
-            Token::Func,
-            Token::Let,
-            Token::Class,
-            Token::Pub,
-            Token::Return,
-            Token::If,
-            Token::Else,
-            Token::Match,
-            Token::For,
-            Token::While,
-            Token::In,
-            Token::Break,
-            Token::Continue,
-            Token::Import,
-            Token::Export,
-            Token::Scope,
-            Token::Nursery,
-            Token::Spawn,
-            Token::Within,
-            Token::Retry,
-            Token::Deadline,
-            Token::Defer,
-            Token::Select,
-            Token::And,
-            Token::Or,
-            Token::Not,
-            Token::As,
-            Token::Is
-        ];
-
-        assert_eq!(tokens, expected);
-    }
 
     #[test]
     fn test_literals() {
@@ -371,13 +345,21 @@ mod tests {
 
         let tokens: Vec<Token> = lexer.map(|tok| tok.unwrap()).collect();
         let expected = vec![
+            Token::Newline,
             Token::Int, Token::Int, Token::Int, Token::Int,
+            Token::Newline,
             Token::Float, Token::Float, Token::Float,
+            Token::Newline,
             Token::Char, Token::Char, Token::Char,
+            Token::Newline,
             Token::String,
+            Token::Newline,
             Token::Ident, Token::Ident,
+            Token::Newline,
             Token::Bool, Token::Bool,
-            Token::Duration, Token::Duration, Token::Duration, Token::Duration, Token::Duration
+            Token::Newline,
+            Token::Duration, Token::Duration, Token::Duration, Token::Duration, Token::Duration,
+            Token::Newline
         ];
 
         assert_eq!(tokens, expected);

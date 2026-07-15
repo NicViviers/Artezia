@@ -75,6 +75,28 @@ impl Parser {
         ast::NodeId(self.next_id - 1)
     }
 
+    fn parse_if(&mut self) -> Option<ast::Expr> {
+        let start = self.advance(); // `if`
+        let cond = self.parse_expr(0)?;
+        let then = self.parse_block()?;
+        let els = if self.eat(Token::Else).is_some() {
+            Some(Box::new(if self.cur().0 == Token::If {
+                self.parse_if()?
+            } else {
+                ast::Expr::Block(self.parse_block()?)
+            }))
+        } else { None };
+
+        let end = els.as_ref().map(|e| e.span()).unwrap_or(then.span.clone());
+        Some(ast::Expr::If {
+            id: self.mk_id(),
+            cond: Box::new(cond),
+            then,
+            els,
+            span: join(&start, &end)
+        })
+    }
+
     fn parse_prefix(&mut self) -> Option<ast::Expr> {
         let (tok, span) = self.cur();
 
@@ -119,6 +141,45 @@ impl Parser {
                 let rhs = self.parse_expr(23)?; // Unary minus / not must bind tighter than every infix op
                 let span = join(&start, &rhs.span());
                 Some(ast::Expr::Unary { id: self.mk_id(), op: ast::UnOp::Neg, rhs: Box::new(rhs), span })
+            }
+
+            Token::If => self.parse_if(),
+            Token::LBrace => self.parse_block().map(|b| ast::Expr::Block(b)),
+            Token::Scope => {
+                let start = self.advance();
+                let body = self.parse_block()?;
+                let span = join(&start, &body.span);
+                Some(ast::Expr::Scope {
+                    id: self.mk_id(),
+                    body,
+                    span
+                })
+            }
+
+            Token::Spawn => {
+                let start = self.advance();
+                let call = self.parse_expr(23)?;
+                let span = join(&start, &call.span());
+                Some(ast::Expr::Spawn {
+                    id: self.mk_id(),
+                    call: Box::new(call),
+                    span
+                })
+            }
+
+            Token::Within => {
+                let start = self.advance();
+                let dur = self.parse_expr(23)?;
+                let body = self.parse_block()?;
+                let els = if self.eat(Token::Else).is_some() { Some(self.parse_block()?) } else { None };
+                let end = els.as_ref().map(|b| b.span.clone()).unwrap_or(body.span.clone());
+                Some(ast::Expr::Within {
+                    id: self.mk_id(),
+                    dur: Box::new(dur),
+                    body,
+                    els,
+                    span
+                })
             }
 
             _ => {
@@ -245,7 +306,179 @@ impl Parser {
         Some(lhs)
     }
 
-    // TODO: parse_block, parse_stmt, parse_let, synchronize according to Step #2
+    /// Skip any run of statement terminators (blank lines, stray semicolons)
+    fn skip_stmt_ends(&mut self) {
+        while self.eat(Token::StmtEnd).is_some() {}
+    }
+
+    fn parse_type(&mut self) -> Option<ast::Type> {
+        let start = self.expect(Token::Ident, "a type name");
+        let mut path = vec![start.clone()];
+
+        while self.eat(Token::PathSep).is_some() { // Consumes `::`
+            path.push(self.expect(Token::Ident, "a type after `::`"));
+        }
+
+        let span = join(&start, path.last().unwrap());
+        Some(ast::Type::Named {
+            id: self.mk_id(),
+            path,
+            span
+        })
+    }
+
+    fn parse_let(&mut self) -> Option<ast::Stmt> {
+        let start = self.advance(); // `let`
+        let name_span = self.expect(Token::Ident, "a variable name");
+        let ty = if self.eat(Token::Colon).is_some() { Some(self.parse_type()?) } else { None };
+        self.expect(Token::Eq, "a `let` binding");
+        let init = self.parse_expr(0)?;
+        let span = join(&start, &init.span());
+        Some(ast::Stmt::Let {
+            id: self.mk_id(),
+            name_span,
+            ty,
+            init,
+            span
+        })
+    }
+
+    fn parse_stmt(&mut self) -> Option<ast::Stmt> {
+        match self.cur().0 {
+            Token::Let => self.parse_let(),
+            Token::Return => {
+                let start = self.advance();
+                let value = if matches!(self.cur().0, Token::StmtEnd | Token::RBrace | Token::EOF) {
+                    None
+                } else {
+                    Some(self.parse_expr(0)?)
+                };
+
+                let end = value.as_ref().map(|e| e.span()).unwrap_or(start.clone());
+                Some(ast::Stmt::Return {
+                    id: self.mk_id(),
+                    value: value,
+                    span: join(&start, &end)
+                })
+            }
+
+            _ => Some(ast::Stmt::Expr(self.parse_expr(0)?)) // default: expr statement
+        }
+    }
+
+    fn synchronize(&mut self) {
+        loop {
+            match self.cur().0 {
+                Token::EOF => return,
+                Token::StmtEnd => { self.advance(); return; }
+                Token::RBrace => return,
+                Token::Func | Token::Let | Token::If | Token::While | Token::For | Token::Return | Token::Scope => return,
+                _ => { self.advance(); }
+            }
+        }
+    }
+
+    fn parse_block(&mut self) -> Option<ast::Block> {
+        let start = self.expect(Token::LBrace, "a block");
+        let mut stmts = Vec::new();
+
+        self.skip_stmt_ends();
+
+        while !matches!(self.cur().0, Token::RBrace | Token::EOF) {
+            let before = self.pos;
+            
+            match self.parse_stmt() {
+                Some(e) => stmts.push(e),
+                None => self.synchronize()
+            }
+
+            debug_assert!(self.pos > before, "no progress at {:?}", self.cur());
+            self.skip_stmt_ends();
+        }
+
+        let end = self.expect(Token::RBrace, "the end of a block");
+        Some(ast::Block {
+            id: self.mk_id(),
+            stmts,
+            span: join(&start, &end)
+        })
+    }
+
+    fn parse_func(&mut self) -> Option<ast::Func> {
+        let start = self.advance(); // `func`
+        let name_span = self.expect(Token::Ident, "a function name");
+        self.expect(Token::LParen, "a function's parameter list");
+        let mut params = Vec::new();
+
+        while !matches!(self.cur().0, Token::RParen | Token::EOF) {
+            let pname = self.expect(Token::Ident, "a parameter name");
+            self.expect(Token::Colon, "a parameter's type annotation");
+            let ty = self.parse_type()?;
+            let span = join(&name_span, &ty.span());
+            params.push(ast::Param { id: self.mk_id(), name_span: pname, ty, span });
+            if self.eat(Token::Comma).is_none() { break; }
+        }
+
+        self.expect(Token::RParen, "the end of the parameter list");
+        let ret = if self.eat(Token::Arrow).is_some() { Some(self.parse_type()?) } else { None };
+        let body = self.parse_block()?;
+        let span = join(&start, &body.span);
+        Some(ast::Func {
+            id: self.mk_id(),
+            name_span,
+            params,
+            ret,
+            body,
+            span
+        })
+    }
+
+    fn parse_import(&mut self) -> Option<ast::Item> {
+        let start = self.advance(); // `import`
+        let first = self.expect(Token::Ident, "a module name");
+        let mut path = vec![first];
+
+        while self.eat(Token::PathSep).is_some()  { // `::` token
+            path.push(self.expect(Token::Ident, "a module name afet `::`"));
+        }
+
+        let span = join(&start, path.last().unwrap());
+        Some(ast::Item::Import(ast::Import { id: self.mk_id(), path, span }))
+    }
+
+    fn parse_item(&mut self) -> Option<ast::Item> {
+        match self.cur().0 {
+            Token::Func => self.parse_func().map(ast::Item::Func),
+            Token::Import => self.parse_import(),
+            other => {
+                self.diags.push(Diagnostic::new(
+                    Severity::Error, self.cur().1,
+                    format!("expected an item (`func` or `import`), found {}", other.describe())
+                ));
+                
+                None
+            }
+        }
+    }
+
+    pub fn parse_file(mut self) -> (ast::File, Vec<Diagnostic>) {
+        let mut items = Vec::new();
+        self.skip_stmt_ends();
+
+        while self.cur().0 != Token::EOF {
+            let before = self.pos;
+
+            match self.parse_item() {
+                Some(i) => items.push(i),
+                None => self.synchronize()
+            }
+
+            debug_assert!(self.pos > before);
+            self.skip_stmt_ends();
+        }
+
+        (ast::File { items }, self.diags)
+    }
 }
 
 #[cfg(test)]

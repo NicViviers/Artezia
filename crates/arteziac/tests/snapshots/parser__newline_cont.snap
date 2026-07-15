@@ -1,0 +1,70 @@
+---
+source: crates/arteziac/tests/parser.rs
+expression: "check(\"func f() {\\n let a = 1 +\\n 2\\n let b = a\\n}\")"
+---
+File {
+    items: [
+        Func(
+            Func {
+                id: NodeId(
+                    7,
+                ),
+                name_span: 5..6,
+                params: [],
+                ret: None,
+                body: Block {
+                    id: NodeId(
+                        6,
+                    ),
+                    stmts: [
+                        Let {
+                            id: NodeId(
+                                3,
+                            ),
+                            name_span: 16..17,
+                            ty: None,
+                            init: Binary {
+                                id: NodeId(
+                                    2,
+                                ),
+                                op: Add,
+                                lhs: Int {
+                                    id: NodeId(
+                                        0,
+                                    ),
+                                    span: 20..21,
+                                },
+                                rhs: Int {
+                                    id: NodeId(
+                                        1,
+                                    ),
+                                    span: 25..26,
+                                },
+                                span: 20..26,
+                            },
+                            span: 12..26,
+                        },
+                        Let {
+                            id: NodeId(
+                                5,
+                            ),
+                            name_span: 32..33,
+                            ty: None,
+                            init: Var {
+                                id: NodeId(
+                                    4,
+                                ),
+                                span: 36..37,
+                            },
+                            span: 28..37,
+                        },
+                    ],
+                    span: 9..39,
+                },
+                span: 0..39,
+            },
+        ),
+    ],
+}
+--- diagnostics ---
+[]

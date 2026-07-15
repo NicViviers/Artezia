@@ -1,0 +1,98 @@
+---
+source: crates/arteziac/tests/parser.rs
+expression: "check(\"func f() { a.b(1).c[0].d() }\")"
+---
+File {
+    items: [
+        Func(
+            Func {
+                id: NodeId(
+                    11,
+                ),
+                name_span: 5..6,
+                params: [],
+                ret: None,
+                body: Block {
+                    id: NodeId(
+                        10,
+                    ),
+                    stmts: [
+                        Expr(
+                            Call {
+                                id: NodeId(
+                                    9,
+                                ),
+                                callee: Field {
+                                    id: NodeId(
+                                        8,
+                                    ),
+                                    obj: Index {
+                                        id: NodeId(
+                                            7,
+                                        ),
+                                        obj: Field {
+                                            id: NodeId(
+                                                5,
+                                            ),
+                                            obj: Call {
+                                                id: NodeId(
+                                                    4,
+                                                ),
+                                                callee: Field {
+                                                    id: NodeId(
+                                                        1,
+                                                    ),
+                                                    obj: Var {
+                                                        id: NodeId(
+                                                            0,
+                                                        ),
+                                                        span: 11..12,
+                                                    },
+                                                    name_span: 13..14,
+                                                    span: 11..14,
+                                                },
+                                                args: [
+                                                    Arg {
+                                                        id: NodeId(
+                                                            3,
+                                                        ),
+                                                        name_span: None,
+                                                        value: Int {
+                                                            id: NodeId(
+                                                                2,
+                                                            ),
+                                                            span: 15..16,
+                                                        },
+                                                        span: 15..16,
+                                                    },
+                                                ],
+                                                span: 11..17,
+                                            },
+                                            name_span: 18..19,
+                                            span: 11..19,
+                                        },
+                                        index: Int {
+                                            id: NodeId(
+                                                6,
+                                            ),
+                                            span: 20..21,
+                                        },
+                                        span: 11..22,
+                                    },
+                                    name_span: 23..24,
+                                    span: 11..24,
+                                },
+                                args: [],
+                                span: 11..26,
+                            },
+                        ),
+                    ],
+                    span: 9..28,
+                },
+                span: 0..28,
+            },
+        ),
+    ],
+}
+--- diagnostics ---
+[]

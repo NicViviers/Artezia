@@ -61,6 +61,15 @@ pub enum Type {
     // Func     { id, params: Vec<Type>, ret: Option<Box<Type>>, span },
 }
 
+impl Type {
+    pub fn span(&self) -> Span {
+        match self {
+            Type::Named { span, .. } => span.clone(),
+            // future variants each carry span - add arms as they appear
+        }
+    }
+}
+
 // ============================================================================
 // Statements & blocks
 // ============================================================================
@@ -78,7 +87,6 @@ pub enum Stmt {
     Let {
         id: NodeId,               // the stmt id doubles as the DEFINITION site id
         name_span: Span,
-        mutable: bool,
         ty: Option<Type>,         // the optional `: Type` annotation
         init: Expr,
         span: Span,

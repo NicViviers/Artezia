@@ -1,0 +1,95 @@
+---
+source: crates/arteziac/tests/parser.rs
+expression: "check(\"func f() { let x = 1 + 2 * 3 ** 2 ** 2 }\")"
+---
+File {
+    items: [
+        Func(
+            Func {
+                id: NodeId(
+                    11,
+                ),
+                name_span: 5..6,
+                params: [],
+                ret: None,
+                body: Block {
+                    id: NodeId(
+                        10,
+                    ),
+                    stmts: [
+                        Let {
+                            id: NodeId(
+                                9,
+                            ),
+                            name_span: 15..16,
+                            ty: None,
+                            init: Binary {
+                                id: NodeId(
+                                    8,
+                                ),
+                                op: Add,
+                                lhs: Int {
+                                    id: NodeId(
+                                        0,
+                                    ),
+                                    span: 19..20,
+                                },
+                                rhs: Binary {
+                                    id: NodeId(
+                                        7,
+                                    ),
+                                    op: Mul,
+                                    lhs: Int {
+                                        id: NodeId(
+                                            1,
+                                        ),
+                                        span: 23..24,
+                                    },
+                                    rhs: Binary {
+                                        id: NodeId(
+                                            6,
+                                        ),
+                                        op: Pow,
+                                        lhs: Int {
+                                            id: NodeId(
+                                                2,
+                                            ),
+                                            span: 27..28,
+                                        },
+                                        rhs: Binary {
+                                            id: NodeId(
+                                                5,
+                                            ),
+                                            op: Pow,
+                                            lhs: Int {
+                                                id: NodeId(
+                                                    3,
+                                                ),
+                                                span: 32..33,
+                                            },
+                                            rhs: Int {
+                                                id: NodeId(
+                                                    4,
+                                                ),
+                                                span: 37..38,
+                                            },
+                                            span: 32..38,
+                                        },
+                                        span: 27..38,
+                                    },
+                                    span: 23..38,
+                                },
+                                span: 19..38,
+                            },
+                            span: 11..38,
+                        },
+                    ],
+                    span: 9..40,
+                },
+                span: 0..40,
+            },
+        ),
+    ],
+}
+--- diagnostics ---
+[]

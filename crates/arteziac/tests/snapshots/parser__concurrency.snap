@@ -1,0 +1,80 @@
+---
+source: crates/arteziac/tests/parser.rs
+expression: "check(\"func f() { scope { spawn work(1) } }\")"
+---
+File {
+    items: [
+        Func(
+            Func {
+                id: NodeId(
+                    8,
+                ),
+                name_span: 5..6,
+                params: [],
+                ret: None,
+                body: Block {
+                    id: NodeId(
+                        7,
+                    ),
+                    stmts: [
+                        Expr(
+                            Scope {
+                                id: NodeId(
+                                    6,
+                                ),
+                                body: Block {
+                                    id: NodeId(
+                                        5,
+                                    ),
+                                    stmts: [
+                                        Expr(
+                                            Spawn {
+                                                id: NodeId(
+                                                    4,
+                                                ),
+                                                call: Call {
+                                                    id: NodeId(
+                                                        3,
+                                                    ),
+                                                    callee: Var {
+                                                        id: NodeId(
+                                                            0,
+                                                        ),
+                                                        span: 25..29,
+                                                    },
+                                                    args: [
+                                                        Arg {
+                                                            id: NodeId(
+                                                                2,
+                                                            ),
+                                                            name_span: None,
+                                                            value: Int {
+                                                                id: NodeId(
+                                                                    1,
+                                                                ),
+                                                                span: 30..31,
+                                                            },
+                                                            span: 30..31,
+                                                        },
+                                                    ],
+                                                    span: 25..32,
+                                                },
+                                                span: 19..32,
+                                            },
+                                        ),
+                                    ],
+                                    span: 17..34,
+                                },
+                                span: 11..34,
+                            },
+                        ),
+                    ],
+                    span: 9..36,
+                },
+                span: 0..36,
+            },
+        ),
+    ],
+}
+--- diagnostics ---
+[]
