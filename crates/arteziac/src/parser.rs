@@ -173,6 +173,7 @@ impl Parser {
                 let body = self.parse_block()?;
                 let els = if self.eat(Token::Else).is_some() { Some(self.parse_block()?) } else { None };
                 let end = els.as_ref().map(|b| b.span.clone()).unwrap_or(body.span.clone());
+                let span = join(&start, &end);
                 Some(ast::Expr::Within {
                     id: self.mk_id(),
                     dur: Box::new(dur),
