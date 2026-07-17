@@ -1,0 +1,9 @@
+---
+source: crates/arteziac/tests/resolve.rs
+expression: "check(\"import std::io\\nfunc f() { io() }\")"
+---
+def 0: Import `io` @ 12..14
+def 1: Func `f` @ 20..21
+use `io` (node 1) -> def 0
+--- parse diagnostics: 0
+--- resolve diagnostics ---

@@ -1,0 +1,9 @@
+---
+source: crates/arteziac/tests/resolve.rs
+expression: "check(\"func f() {\\n let a = missing\\n}\")"
+---
+def 0: Func `f` @ 5..6
+def 1: Local `a` @ 16..17
+--- parse diagnostics: 0
+--- resolve diagnostics ---
+Error @ 20..27: cannot find `missing` in this scope

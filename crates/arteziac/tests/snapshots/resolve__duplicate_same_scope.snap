@@ -1,0 +1,11 @@
+---
+source: crates/arteziac/tests/resolve.rs
+expression: "check(\"func f() {\\n let x = 1\\n let x = 2\\n let y = x\\n}\")"
+---
+def 0: Func `f` @ 5..6
+def 1: Local `x` @ 16..17
+def 2: Local `y` @ 38..39
+use `x` (node 4) -> def 1
+--- parse diagnostics: 0
+--- resolve diagnostics ---
+Error @ 27..28: `x` is already defined in this scope

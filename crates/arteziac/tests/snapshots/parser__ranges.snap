@@ -1,0 +1,56 @@
+---
+source: crates/arteziac/tests/parser.rs
+expression: "check(\"func f() { let r = 0 .. 10 }\")"
+---
+File {
+    items: [
+        Func(
+            Func {
+                id: NodeId(
+                    5,
+                ),
+                name_span: 5..6,
+                params: [],
+                ret: None,
+                body: Block {
+                    id: NodeId(
+                        4,
+                    ),
+                    stmts: [
+                        Let {
+                            id: NodeId(
+                                3,
+                            ),
+                            name_span: 15..16,
+                            ty: None,
+                            init: Range {
+                                id: NodeId(
+                                    2,
+                                ),
+                                lo: Int {
+                                    id: NodeId(
+                                        0,
+                                    ),
+                                    span: 19..20,
+                                },
+                                hi: Int {
+                                    id: NodeId(
+                                        1,
+                                    ),
+                                    span: 24..26,
+                                },
+                                inclusive: false,
+                                span: 19..26,
+                            },
+                            span: 11..26,
+                        },
+                    ],
+                    span: 9..28,
+                },
+                span: 0..28,
+            },
+        ),
+    ],
+}
+--- diagnostics ---
+[]

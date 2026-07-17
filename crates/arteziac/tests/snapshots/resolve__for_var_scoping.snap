@@ -1,0 +1,13 @@
+---
+source: crates/arteziac/tests/resolve.rs
+expression: "check(\"func f() {\\n for i in 0 .. i {\\n let a = i\\n }\\n let b = i\\n}\")"
+---
+def 0: Func `f` @ 5..6
+def 1: Local `i` @ 16..17
+def 2: Local `a` @ 35..36
+def 3: Local `b` @ 49..50
+use `i` (node 3) -> def 1
+--- parse diagnostics: 0
+--- resolve diagnostics ---
+Error @ 26..27: cannot find `i` in this scope
+Error @ 53..54: cannot find `i` in this scope

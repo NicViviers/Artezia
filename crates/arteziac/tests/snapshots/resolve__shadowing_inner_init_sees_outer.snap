@@ -1,0 +1,10 @@
+---
+source: crates/arteziac/tests/resolve.rs
+expression: "check(\"func f() {\\n let x = 1\\n if true {\\n let x = x\\n }\\n}\")"
+---
+def 0: Func `f` @ 5..6
+def 1: Local `x` @ 16..17
+def 2: Local `x` @ 38..39
+use `x` (node 3) -> def 1
+--- parse diagnostics: 0
+--- resolve diagnostics ---

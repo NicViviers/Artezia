@@ -31,3 +31,13 @@ fn concurrency() {
 fn recovery() {
     assert_snapshot!(check("func f() {\n let = 5\n let ok = 1\n}"));
 }
+
+#[test]
+fn ranges() {
+    insta::assert_snapshot!(check("func f() { let r = 0 .. 10 }"));
+}
+#[test]
+fn range_precedence() {
+    insta::assert_snapshot!(check("func f() { let r = 0 .. n + 1 }"));
+    // must nest as Range(0, Add(n, 1)) 0 additive (11) binds tighter than range (9)
+}

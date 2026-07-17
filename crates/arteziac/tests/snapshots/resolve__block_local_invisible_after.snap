@@ -1,0 +1,10 @@
+---
+source: crates/arteziac/tests/resolve.rs
+expression: "check(\"func f() {\\n if true {\\n let t = 1\\n }\\n let u = t\\n}\")"
+---
+def 0: Func `f` @ 5..6
+def 1: Local `t` @ 27..28
+def 2: Local `u` @ 41..42
+--- parse diagnostics: 0
+--- resolve diagnostics ---
+Error @ 45..46: cannot find `t` in this scope

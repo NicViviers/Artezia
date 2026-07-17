@@ -177,6 +177,12 @@ pub enum Token {
     #[token(".")]
     Dot,
 
+    #[token("..")]
+    DotDot,
+
+    #[token("..=")]
+    DotDotEq,
+
     #[token("->")]
     Arrow,
 
@@ -276,6 +282,8 @@ impl Token {
             Token::BitNot => "`~`",
             Token::Eq => "`=`",
             Token::Dot => "`.`",
+            Token::DotDot => "`..`",
+            Token::DotDotEq => "`..=`",
             Token::Arrow => "`->`",
             Token::Colon => "`:`",
             Token::PathSep => "`::`",

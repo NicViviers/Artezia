@@ -1,0 +1,9 @@
+---
+source: crates/arteziac/tests/resolve.rs
+expression: "check(\"func a() { b() }\\nfunc b() { }\")"
+---
+def 0: Func `a` @ 5..6
+def 1: Func `b` @ 22..23
+use `b` (node 0) -> def 1
+--- parse diagnostics: 0
+--- resolve diagnostics ---

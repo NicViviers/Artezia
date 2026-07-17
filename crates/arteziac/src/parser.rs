@@ -9,6 +9,12 @@ fn join(lhs: &Span, rhs: &Span) -> Span {
     lhs.start .. rhs.end
 }
 
+enum InfixOp {
+    Bin(ast::BinOp), // `+`, `-`, `==`, ...etc -> Expr::Binary
+    Range { inclusive: bool }, // `..` and `..=` -> Expr::Range
+    Assign // `=` -> Expr::Assign
+}
+
 pub struct Parser {
     tokens: Vec<(Token, Span)>,
     pos: usize,
@@ -195,20 +201,23 @@ impl Parser {
         }
     }
 
-    fn infix_binding_power(tok: Token) -> Option<(ast::BinOp, u8, u8)> {
+    fn infix_binding_power(tok: Token) -> Option<(InfixOp, u8, u8)> {
         use ast::BinOp::*;
 
         Some(match tok {
-            Token::Or => (Or, 3, 4),
-            Token::And => (And, 5, 6),
-            Token::Eqeq => (Eq, 7, 8),
-            Token::LT => (Lt, 7, 8),
-            Token::Plus => (Add, 11, 12),
-            Token::Minus => (Sub, 11, 12),
-            Token::Mul => (Mul, 13, 14),
-            Token::Div => (Div, 13, 14),
-            Token::Pow => (Pow, 16, 15),
-            _ => return None
+            Token::Eq => (InfixOp::Assign, 2, 1),
+            Token::Or => (InfixOp::Bin(Or), 3, 4),
+            Token::And  => (InfixOp::Bin(And), 5, 6),
+            Token::Eqeq => (InfixOp::Bin(Eq), 7, 8),
+            Token::LT => (InfixOp::Bin(Lt), 7, 8),
+            Token::DotDot => (InfixOp::Range { inclusive: false }, 9, 10),
+            Token::DotDotEq => (InfixOp::Range { inclusive: true },  9, 10),
+            Token::Plus  => (InfixOp::Bin(Add), 11, 12),
+            Token::Minus => (InfixOp::Bin(Sub), 11, 12),
+            Token::Mul => (InfixOp::Bin(Mul), 13, 14),
+            Token::Div => (InfixOp::Bin(Div), 13, 14),
+            Token::Pow  => (InfixOp::Bin(Pow), 16, 15),
+            _ => return None,
         })
     }
 
@@ -295,12 +304,29 @@ impl Parser {
             let rhs = self.parse_expr(r_bp)?;
             let span = join(&lhs.span(), &rhs.span());
 
-            lhs = ast::Expr::Binary {
-                id: self.mk_id(),
-                op,
-                lhs: Box::new(lhs),
-                rhs: Box::new(rhs),
-                span
+            lhs = match op {
+                InfixOp::Bin(op) => ast::Expr::Binary {
+                    id: self.mk_id(),
+                    op,
+                    lhs: Box::new(lhs),
+                    rhs: Box::new(rhs),
+                    span
+                },
+
+                InfixOp::Range { inclusive } => ast::Expr::Range {
+                    id: self.mk_id(),
+                    lo: Box::new(lhs),
+                    hi: Box::new(rhs),
+                    inclusive,
+                    span
+                },
+
+                InfixOp::Assign => ast::Expr::Assign {
+                    id: self.mk_id(),
+                    target: Box::new(lhs),
+                    value: Box::new(rhs),
+                    span
+                }
             }
         }
 
@@ -360,6 +386,35 @@ impl Parser {
                     id: self.mk_id(),
                     value: value,
                     span: join(&start, &end)
+                })
+            }
+
+            Token::While => {
+                let start = self.advance();
+                let cond = self.parse_expr(0)?;
+                let body = self.parse_block()?;
+                let span = join(&start, &body.span);
+                Some(ast::Stmt::While {
+                    id: self.mk_id(),
+                    cond,
+                    body,
+                    span
+                })
+            }
+
+            Token::For => {
+                let start = self.advance();
+                let var_span = self.expect(Token::Ident, "a loop variable");
+                self.expect(Token::In, "`in`");
+                let iter = self.parse_expr(0)?;
+                let body = self.parse_block()?;
+                let span = join(&start, &body.span);
+                Some(ast::Stmt::For {
+                    id: self.mk_id(),
+                    var_span,
+                    iter,
+                    body,
+                    span
                 })
             }
 
