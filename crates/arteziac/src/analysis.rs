@@ -117,6 +117,7 @@ pub enum Type {
     Str,
     Char,
     Duration,
+    Range,
     Unit,
     Func { params: Vec<TypeId>, ret: TypeId },
     /// When an expression can't be typed it gets Error, and every rule accepts Error silently: Error + Int = Error, NO new diagnostic
@@ -155,6 +156,7 @@ impl TypeTable {
             Type::Str => "String".into(),
             Type::Char => "Char".into(),
             Type::Duration => "Duration".into(),
+            Type::Range => "Range".into(),
             Type::Unit => "Unit".into(),
             Type::Error => "<error>".into(),
             Type::Func { params, ret } => {
@@ -176,6 +178,7 @@ pub struct Prims {
     pub str_: TypeId,
     pub char_: TypeId,
     pub duration: TypeId,
+    pub range: TypeId,
     pub unit: TypeId,
     pub error: TypeId,
 }
@@ -239,6 +242,7 @@ impl Analysis {
             str_: type_table.intern(Type::Str),
             char_: type_table.intern(Type::Char),
             duration: type_table.intern(Type::Duration),
+            range: type_table.intern(Type::Range),
             unit: type_table.intern(Type::Unit),
             error: type_table.intern(Type::Error),
         };
