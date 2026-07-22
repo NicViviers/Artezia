@@ -268,9 +268,9 @@ pub fn analyze(
 ) -> (Analysis, Vec<Diagnostic>) {
     let mut a = Analysis::new();
     let mut diags = Vec::new();
-    crate::passes::resolve::resolve(file, src, &mut a, &mut diags);       // pass A
-    // crate::literals::decode_literals(file, src, &mut a, &mut diags); // pass B
-    // crate::typeck::typecheck(file, &mut a, &mut diags);           // pass C
+    crate::passes::resolve::resolve(file, src, &mut a, &mut diags); // pass A
+    crate::passes::literals::decode_literals(file, src, &mut a, &mut diags); // pass B
+    crate::passes::typecheck::typecheck(file, src, &mut a, &mut diags); // pass C
     (a, diags)
 }
 

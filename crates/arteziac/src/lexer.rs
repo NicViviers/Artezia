@@ -217,6 +217,8 @@ pub enum Token {
    #[token(";")]
    Semi,
 
+   #[regex("''")]
+   EmptyChar, // Specific error
    #[token("\n")]
    Newline,
    StmtEnd,
@@ -296,10 +298,11 @@ impl Token {
             Token::RBracket => "`]`",
             
             Token::Semi => "a semi-colon",
+            Token::EmptyChar => "a empty charcter",
             Token::Newline => "a new line",
             Token::StmtEnd => "StmtEnd",
             Token::Error => "Error",
-            Token::EOF => "EOF"
+            Token::EOF => "EOF",
         }
     }
 }

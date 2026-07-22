@@ -1,0 +1,52 @@
+---
+source: crates/arteziac/tests/parser.rs
+expression: "check(\"func f() { let x = § }\")"
+---
+File {
+    items: [
+        Func(
+            Func {
+                id: NodeId(
+                    3,
+                ),
+                name_span: 5..6,
+                params: [],
+                ret: None,
+                body: Block {
+                    id: NodeId(
+                        2,
+                    ),
+                    stmts: [
+                        Let {
+                            id: NodeId(
+                                1,
+                            ),
+                            name_span: 15..16,
+                            ty: None,
+                            init: Error {
+                                id: NodeId(
+                                    0,
+                                ),
+                                span: 19..21,
+                            },
+                            span: 11..21,
+                        },
+                    ],
+                    span: 9..23,
+                },
+                span: 0..23,
+            },
+        ),
+    ],
+}
+--- diagnostics ---
+[
+    Diagnostic {
+        severity: Error,
+        span: 19..21,
+        message: "invalid token",
+        label: None,
+        notes: [],
+        code: None,
+    },
+]

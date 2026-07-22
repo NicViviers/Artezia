@@ -217,6 +217,17 @@ pub fn dump(f: &Function, a: &Analysis) -> String {
     out.push_str("}\n");
     out
 }
+
+pub fn dump_program(p: &Program, a: &Analysis) -> String {
+    let mut out = String::new();
+
+    for f in &p.funcs {
+        out.push_str(&dump(f, a));
+        out.push('\n');
+    }
+
+    out
+}
  
 fn fmt_instr(k: &InstrKind, a: &Analysis) -> String {
     use InstrKind::*;

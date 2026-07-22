@@ -189,13 +189,35 @@ impl Parser {
                 })
             }
 
-            _ => {
+            Token::EmptyChar => {
+                let span = self.cur().1;
+                self.advance();
+
                 self.diags.push(Diagnostic::new(
                     Severity::Error,
                     span.clone(),
-                    format!("expected expression here, found {}", tok.describe())
+                    "empty character literal (a char must contain exactly one character)".to_string()
                 ));
-                
+
+                Some(ast::Expr::Error { id: self.mk_id(), span })
+            }
+
+            _ => {
+                let (tok, span) = self.cur();
+                self.diags.push(Diagnostic::new(
+                    Severity::Error,
+                    span.clone(),
+                    if tok == Token::Error {
+                        "invalid token".to_string()
+                    } else {
+                        format!("expected an expression, found {}", tok.describe())
+                    }
+                ));
+
+                if tok == Token::Error {
+                    self.advance();
+                }
+
                 Some(ast::Expr::Error { id: self.mk_id(), span })
             }
         }

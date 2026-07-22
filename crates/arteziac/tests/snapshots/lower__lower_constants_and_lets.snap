@@ -1,0 +1,26 @@
+---
+source: crates/arteziac/tests/lower.rs
+expression: "check(\"func main() {\\n let a = 1\\n let b = 5.5\\n let c = \\\"\\\"\\n let d = 'a'\\n let e = 10ms\\n let f = true\\n}\")"
+---
+func main() -> Unit {
+  local %0: Int (a)
+  local %1: Float (b)
+  local %2: String (c)
+  local %3: Char (d)
+  local %4: Duration (e)
+  local %5: Bool (f)
+  bb0:
+    v0 = const.int 1
+    store %0, v0
+    v1 = const.float 5.5
+    store %1, v1
+    v2 = const.str ""
+    store %2, v2
+    v3 = const.char 'a'
+    store %3, v3
+    v4 = const.duration 10000000ns
+    store %4, v4
+    v5 = const.bool true
+    store %5, v5
+    return
+}

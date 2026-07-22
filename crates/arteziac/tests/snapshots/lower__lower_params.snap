@@ -1,0 +1,13 @@
+---
+source: crates/arteziac/tests/lower.rs
+expression: "check(\"func add(a: Int, b: Int) -> Int {\\n let c = 1\\n}\")"
+---
+func add(%0, %1) -> Int {
+  local %0: Int (a)
+  local %1: Int (b)
+  local %2: Int (c)
+  bb0:
+    v0 = const.int 1
+    store %2, v0
+    return
+}

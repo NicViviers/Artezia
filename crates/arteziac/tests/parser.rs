@@ -41,3 +41,13 @@ fn range_precedence() {
     insta::assert_snapshot!(check("func f() { let r = 0 .. n + 1 }"));
     // must nest as Range(0, Add(n, 1)) 0 additive (11) binds tighter than range (9)
 }
+
+#[test]
+fn empty_char_diagnoses() {
+    insta::assert_snapshot!(check("func f() { let d = '' }")) // Should produce 1 diagnostic
+}
+
+#[test]
+fn stray_garbage_recovers() {
+    insta::assert_snapshot!(check("func f() { let x = § }")) // Should produce 1 diagnostic
+}

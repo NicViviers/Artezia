@@ -2,6 +2,7 @@ use crate::analysis::{Analysis, Type, TypeId};
 use crate::parser::Span;
 use crate::ast;
 use artezia_diag::{Diagnostic, Severity};
+use chumsky::container::Seq;
 
 pub fn typecheck(
     file: &ast::File,
