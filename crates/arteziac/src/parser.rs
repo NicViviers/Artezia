@@ -459,27 +459,20 @@ impl Parser {
     fn parse_block(&mut self) -> Option<ast::Block> {
         let start = self.expect(Token::LBrace, "a block");
         let mut stmts = Vec::new();
-
         self.skip_stmt_ends();
 
         while !matches!(self.cur().0, Token::RBrace | Token::EOF) {
             let before = self.pos;
-            
             match self.parse_stmt() {
-                Some(e) => stmts.push(e),
-                None => self.synchronize()
+                Some(s) => stmts.push(s),
+                None => self.synchronize(),
             }
-
-            debug_assert!(self.pos > before, "no progress at {:?}", self.cur());
+            debug_assert!(self.pos > before, "no progress in block at {:?}", self.cur());
             self.skip_stmt_ends();
         }
 
         let end = self.expect(Token::RBrace, "the end of a block");
-        Some(ast::Block {
-            id: self.mk_id(),
-            stmts,
-            span: join(&start, &end)
-        })
+        Some(ast::Block { id: self.mk_id(), stmts, span: join(&start, &end) })
     }
 
     fn parse_func(&mut self) -> Option<ast::Func> {

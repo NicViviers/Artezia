@@ -39,7 +39,7 @@ pub struct Func {
 
 #[derive(Debug, PartialEq)]
 pub struct Param {
-    pub id: NodeId,               // params are DEFINITIONS → they need ids
+    pub id: NodeId,               // params are DEFINITIONS -> they need ids
                                   // (resolution creates a DefId per param)
     pub name_span: Span,
     pub ty: Type,                 // mandatory on params (per language ref)
@@ -76,18 +76,17 @@ impl Type {
 
 #[derive(Debug, PartialEq)]
 pub struct Block {
-    pub id: NodeId,               // blocks are scopes → resolution pushes/pops
-                                  // on them, and blocks-as-expressions have types
+    pub id: NodeId, // blocks are scopes -> resolution pushes/pops on them, and blocks-as-expressions have types
     pub stmts: Vec<Stmt>,
-    pub span: Span,               // `{` through `}`
+    pub span: Span, // `{` through `}`
 }
 
 #[derive(Debug, PartialEq)]
 pub enum Stmt {
     Let {
-        id: NodeId,               // the stmt id doubles as the DEFINITION site id
+        id: NodeId, // the stmt id doubles as the DEFINITION site id
         name_span: Span,
-        ty: Option<Type>,         // the optional `: Type` annotation
+        ty: Option<Type>, // the optional `: Type` annotation
         init: Expr,
         span: Span,
     },
@@ -96,7 +95,7 @@ pub enum Stmt {
     While { id: NodeId, cond: Expr, body: Block, span: Span },
     For {
         id: NodeId,
-        var_span: Span,           // loop variable — also a definition site
+        var_span: Span, // loop variable — also a definition site
         iter: Expr,
         body: Block,
         span: Span,
@@ -121,8 +120,7 @@ pub enum Expr {
     Duration { id: NodeId, span: Span },
     Bool     { id: NodeId, span: Span },
 
-    /// A name in expression position. WHICH x? → Analysis.defs[id] after
-    /// resolution.
+    /// A name in expression position. WHICH x? -> Analysis.defs[id] after resolution.
     Var { id: NodeId, span: Span },
 
     Unary {

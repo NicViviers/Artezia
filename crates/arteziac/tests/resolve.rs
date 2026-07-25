@@ -63,8 +63,8 @@ fn dump_resolution(
 }
 
 
-/// pre-declaration - bodies may call functions defined LATER.
-/// Expect: zero diagnostics; `b`'s use links to def created in phase 1.
+/// pre-declaration - bodies may call functions defined LATER
+/// Expect: zero diagnostics; `b`'s use links to def created in phase 1
 #[test]
 fn use_before_definition() {
     insta::assert_snapshot!(check(
@@ -82,7 +82,7 @@ fn shadowing_inner_init_sees_outer() {
     ));
 }
 
-/// init-before-declare with NO outer binding = error, not self-reference.
+/// init-before-declare with NO outer binding = error, not self-reference
 /// Expect: exactly one "cannot find `x`" diagnostic; x still gets declared
 /// (later uses of x resolve fine — add one to prove it)
 #[test]

@@ -1,0 +1,19 @@
+---
+source: crates/arteziac/tests/lower.rs
+expression: "check(\"func main(c: Bool) {\\n while c {\\n let x = 1\\n }\\n}\")"
+---
+func main(%0) -> Unit {
+  local %0: Bool (c)
+  local %1: Int (x)
+  bb0:
+    jump bb1
+  bb1:
+    v0 = load %0
+    branch v0 -> bb2, bb3
+  bb2:
+    v1 = const.int 1
+    store %1, v1
+    jump bb1
+  bb3:
+    return
+}

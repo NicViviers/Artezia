@@ -1,0 +1,11 @@
+---
+source: crates/arteziac/tests/lower.rs
+expression: "check(\"func main() {\\n let x = -5\\n}\")"
+---
+func main() -> Unit {
+  local %0: Int (x)
+  bb0:
+    v0 = const.int -5
+    store %0, v0
+    return
+}

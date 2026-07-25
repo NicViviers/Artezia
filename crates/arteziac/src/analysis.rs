@@ -194,7 +194,7 @@ pub enum LitValue {
     Float(f64),
     Str(String),        // escape sequences already processed
     Char(char),
-    Duration(u64),      // normalized to NANOSECONDS: "5s" → 5_000_000_000
+    Duration(u64),      // normalized to NANOSECONDS: "5s" -> 5_000_000_000
     Bool(bool),
 }
 

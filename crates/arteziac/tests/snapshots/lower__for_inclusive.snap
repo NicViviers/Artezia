@@ -1,0 +1,29 @@
+---
+source: crates/arteziac/tests/lower.rs
+expression: "check(\"func main() {\\n for i in 0 ..= 10 {\\n }\\n}\")"
+---
+func main() -> Unit {
+  local %0: Int (i)
+  local %1: Int
+  bb0:
+    v0 = const.int 0
+    store %0, v0
+    v1 = const.int 10
+    store %1, v1
+    jump bb1
+  bb1:
+    v2 = load %0
+    v3 = load %1
+    v4 = cmp.le v2, v3
+    branch v4 -> bb2, bb4
+  bb2:
+    jump bb3
+  bb3:
+    v5 = load %0
+    v6 = const.int 1
+    v7 = add v5, v6
+    store %0, v7
+    jump bb1
+  bb4:
+    return
+}

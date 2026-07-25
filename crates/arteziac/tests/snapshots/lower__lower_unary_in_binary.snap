@@ -1,0 +1,16 @@
+---
+source: crates/arteziac/tests/lower.rs
+expression: "check(\"func main(a: Int, b: Int) {\\n let x = -a + b\\n}\")"
+---
+func main(%0, %1) -> Unit {
+  local %0: Int (a)
+  local %1: Int (b)
+  local %2: Int (x)
+  bb0:
+    v0 = load %0
+    v1 = neg v0
+    v2 = load %1
+    v3 = add v1, v2
+    store %2, v3
+    return
+}

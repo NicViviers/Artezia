@@ -2,7 +2,6 @@ use crate::analysis::{Analysis, Type, TypeId};
 use crate::parser::Span;
 use crate::ast;
 use artezia_diag::{Diagnostic, Severity};
-use chumsky::container::Seq;
 
 pub fn typecheck(
     file: &ast::File,
@@ -36,6 +35,7 @@ pub fn typecheck(
             if let Some(&def) = c.a.defs.get(&f.id) {
                 c.a.def_types.insert(def, fty);
             }
+
             for (p, ty) in f.params.iter().zip(&params) {
                 if let Some(&pd) = c.a.defs.get(&p.id) {
                     c.a.def_types.insert(pd, *ty);
@@ -46,19 +46,23 @@ pub fn typecheck(
 
     for item in &file.items {
         if let ast::Item::Func(f) = item {
-            // Recover this function's return type for `return` checking
-            c.current_ret = c
-                .a
-                .defs
-                .get(&f.id)
-                .and_then(|def| c.a.def_types.get(def))
-                .map(|&fty| match c.a.type_table.get(fty) {
-                    Type::Func { ret, .. } => *ret,
-                    _ => c.a.prims.unit,
-                })
-                .unwrap_or(c.a.prims.unit);
+            let ret = f.ret.as_ref().map_or(c.a.prims.unit, |t| c.lower_type(t));
+
+            c.current_ret = ret;
             c.in_loop = false;
             c.check_block(&f.body);
+
+            // NEW — the return-completeness check:
+            if ret != c.a.prims.unit && !block_always_returns(&f.body) {
+                c.error(
+                    f.name_span.clone(),
+                    format!(
+                        "function must return {} but can fall off the end \
+                        without returning a value",
+                        c.a.type_table.display(ret)
+                    ),
+                );
+            }
         }
     }
 }
@@ -427,5 +431,29 @@ impl Checker<'_> {
 
         self.a.types.insert(e.id(), ty);
         ty
+    }
+}
+
+fn block_always_returns(b: &ast::Block) -> bool {
+    b.stmts.iter().any(stmt_always_returns)
+}
+
+fn stmt_always_returns(s: &ast::Stmt) -> bool {
+    match s {
+        ast::Stmt::Return { .. } => true,
+        ast::Stmt::Expr(ast::Expr::If { then, els: Some(e), .. }) => {
+            block_always_returns(then) && expr_always_returns(e)
+        }
+        _ => false,
+    }
+}
+
+fn expr_always_returns(e: &ast::Expr) -> bool {
+    match e {
+        ast::Expr::Block(b) => block_always_returns(b),
+        ast::Expr::If { then, els: Some(e), .. } => {
+            block_always_returns(then) && expr_always_returns(e)
+        }
+        _ => false,
     }
 }

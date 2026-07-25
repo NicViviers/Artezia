@@ -1,0 +1,38 @@
+---
+source: crates/arteziac/tests/lower.rs
+expression: "check(\"func main(a: Bool, b: Bool, c: Bool) {\\n let x = a and b and c\\n}\")"
+---
+func main(%0, %1, %2) -> Unit {
+  local %0: Bool (a)
+  local %1: Bool (b)
+  local %2: Bool (c)
+  local %3: Bool
+  local %4: Bool
+  local %5: Bool (x)
+  bb0:
+    v0 = load %0
+    branch v0 -> bb1, bb3
+  bb1:
+    v2 = load %1
+    store %3, v2
+    jump bb2
+  bb2:
+    v3 = load %3
+    branch v3 -> bb4, bb6
+  bb3:
+    v1 = const.bool false
+    store %3, v1
+    jump bb2
+  bb4:
+    v5 = load %2
+    store %4, v5
+    jump bb5
+  bb5:
+    v6 = load %4
+    store %5, v6
+    return
+  bb6:
+    v4 = const.bool false
+    store %4, v4
+    jump bb5
+}

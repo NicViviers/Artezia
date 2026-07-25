@@ -231,7 +231,7 @@ fn decode_escape_or_char(inner: &str) -> Option<char> {
     }
 }
 
-/// The escape table: `\n` → newline, etc. Extending escapes (e.g. \u{...})
+/// The escape table: `\n` -> newline, etc. Extending escapes (e.g. \u{...})
 /// happens HERE, once, for both char and string literals
 fn escape_char(c: char) -> Option<char> {
     match c {
