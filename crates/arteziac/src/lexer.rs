@@ -2,7 +2,7 @@ use logos::Logos;
 use super::parser::Span;
 
 #[derive(Logos, Copy, Clone, Debug, PartialEq)]
-#[logos(skip r"[ \t\r]+")]
+#[logos(skip r"[ \t\r\n]+")]
 pub enum Token {
     // Keywords
     #[token("func")]
@@ -219,9 +219,6 @@ pub enum Token {
 
    #[regex("''")]
    EmptyChar, // Specific error
-   #[token("\n")]
-   Newline,
-   StmtEnd,
    Error,
    EOF
 }
@@ -299,42 +296,17 @@ impl Token {
             
             Token::Semi => "a semi-colon",
             Token::EmptyChar => "a empty charcter",
-            Token::Newline => "a new line",
-            Token::StmtEnd => "StmtEnd",
             Token::Error => "Error",
             Token::EOF => "EOF",
         }
     }
 }
 
-fn insert_stmt_ends(raw: Vec<(Token, Span)>) -> Vec<(Token, Span)> {
-    let mut out = Vec::with_capacity(raw.len());
-    for (tok, span) in raw {
-        match tok {
-            Token::Newline => {
-                let ends_stmt = matches!(
-                    out.last().map(|(t, _): &(Token, Span)| *t),
-                    Some(Token::Ident | Token::Int | Token::Float | Token::String
-                        | Token::Char | Token::Bool | Token::Duration
-                        | Token::RParen | Token::RBracket | Token::RBrace
-                        | Token::Return | Token::Break | Token::Continue)
-                );
-                if ends_stmt { out.push((Token::StmtEnd, span)); }
-                // else: continuation — the newline vanishes entirely
-            }
-            Token::Semi => out.push((Token::StmtEnd, span)),
-            t => out.push((t, span)),
-        }
-    }
-    out
-}
-
 pub fn lex(src: &str) -> Vec<(Token, Span)> {
-    let raw: Vec<(Token, Span)> = Token::lexer(src)
+    Token::lexer(src)
         .spanned()
-        .map(|(tok, span)| (tok.unwrap_or(Token::Error), span))
-        .collect();
-    insert_stmt_ends(raw)
+        .map(|(t, s)| (t.unwrap_or(Token::Error), s))
+        .collect()
 }
 
 #[cfg(test)]
@@ -356,21 +328,13 @@ mod tests {
 
         let tokens: Vec<Token> = lexer.map(|tok| tok.unwrap()).collect();
         let expected = vec![
-            Token::Newline,
             Token::Int, Token::Int, Token::Int, Token::Int,
-            Token::Newline,
             Token::Float, Token::Float, Token::Float,
-            Token::Newline,
             Token::Char, Token::Char, Token::Char,
-            Token::Newline,
             Token::String,
-            Token::Newline,
             Token::Ident, Token::Ident,
-            Token::Newline,
             Token::Bool, Token::Bool,
-            Token::Newline,
             Token::Duration, Token::Duration, Token::Duration, Token::Duration, Token::Duration,
-            Token::Newline
         ];
 
         assert_eq!(tokens, expected);

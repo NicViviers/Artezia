@@ -86,6 +86,10 @@ impl Resolver<'_> {
             self.resolve_stmt(s);
         }
 
+        if let Some(e) = &b.tail {
+            self.resolve_expr(e);
+        }
+
         self.pop();
     }
 

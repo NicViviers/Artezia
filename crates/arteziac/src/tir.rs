@@ -1,5 +1,5 @@
 use crate::analysis::{Analysis, DefId, TypeId};
-use crate::ast::{Func, NodeId};
+use crate::ast::NodeId;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ValueId(pub u32); // a temporary value used many times

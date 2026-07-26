@@ -29,6 +29,10 @@ impl Decoder<'_> {
         for s in &b.stmts {
             self.walk_stmt(s);
         }
+
+        if let Some(e) = &b.tail {
+            self.walk_expr(e);
+        }
     }
 
     fn walk_stmt(&mut self, s: &ast::Stmt) {

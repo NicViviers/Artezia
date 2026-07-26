@@ -1,6 +1,6 @@
 ---
 source: crates/arteziac/tests/lower.rs
-expression: "check(\"func main(a: Int, b: Int) {\\n let c = a < b\\n}\")"
+expression: "check(\"func main(a: Int, b: Int) { let c = a < b; }\")"
 ---
 func main(%0, %1) -> Unit {
   local %0: Int (a)
@@ -11,5 +11,6 @@ func main(%0, %1) -> Unit {
     v1 = load %1
     v2 = cmp.lt v0, v1
     store %2, v2
+    v3 = const.unit
     return
 }

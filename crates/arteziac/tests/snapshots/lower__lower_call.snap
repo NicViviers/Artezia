@@ -1,10 +1,11 @@
 ---
 source: crates/arteziac/tests/lower.rs
-expression: "check(\"func f(a: Int) {}  func main() { f(1 + 2) }\")"
+expression: "check(\"func f(a: Int) {}  func main() { f(1 + 2); }\")"
 ---
 func f(%0) -> Unit {
   local %0: Int (a)
   bb0:
+    v0 = const.unit
     return
 }
 
@@ -14,5 +15,6 @@ func main() -> Unit {
     v1 = const.int 2
     v2 = add v0, v1
     v3 = call f (v2)
+    v4 = const.unit
     return
 }

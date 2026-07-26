@@ -80,9 +80,9 @@ impl<'a> Lowerer<'a> {
         LocalId(self.f.locals.len() as u32 - 1)
     }
 
-    /// An expression's type. Panics if typeck was violated
+    /// An expression's type. Panics if typecheck was violated
     fn ty(&self, e: &ast::Expr) -> TypeId {
-        *self.a.types.get(&e.id()).expect("typeck violated: expression has no type")
+        *self.a.types.get(&e.id()).expect("typecheck violated: expression has no type")
     }
 
     fn name_of(&self, def: DefId) -> String {
@@ -92,6 +92,10 @@ impl<'a> Lowerer<'a> {
     fn lower_block(&mut self, b: &ast::Block) {
         for s in &b.stmts {
             self.lower_stmt(s);
+        }
+
+        if let Some(e) = &b.tail {
+            self.lower_expr(e);
         }
     }
 
@@ -263,7 +267,7 @@ impl<'a> Lowerer<'a> {
 
             ast::Expr::Unary { op, rhs, .. } => {
                 let v = self.lower_expr(rhs);
-                self.emit(InstrKind::Unary { op: lower_unop(*op), v }, ty, origin) // TODO: Implement lower_unop
+                self.emit(InstrKind::Unary { op: lower_unop(*op), v }, ty, origin)
             }
 
             ast::Expr::Binary { op, lhs, rhs, .. } => match op {
@@ -338,13 +342,24 @@ impl<'a> Lowerer<'a> {
                 }
             }
 
+            ast::Expr::Block(b) => {
+                self.lower_block(b);
+                self.emit(InstrKind::ConstUnit, self.a.prims.unit, origin)
+            }
+
             _ => todo!("lower_expr: {e:?}")
         }
     }
 
     fn lower_block_value(&mut self, b: &ast::Block) -> ValueId {
-        self.lower_block(b);
-        self.emit(InstrKind::ConstUnit, self.a.prims.unit, b.id)
+        for s in &b.stmts {
+            self.lower_stmt(s);
+        }
+        
+        match &b.tail {
+            Some(e) => self.lower_expr(e),
+            None => self.emit(InstrKind::ConstUnit, self.a.prims.unit, b.id)
+        }
     }
 
     fn lower_short_circuit(&mut self, e: &ast::Expr) -> ValueId {
@@ -470,10 +485,12 @@ fn lower_func(src: &ast::Func, a: &Analysis) -> Function {
         lw.def_local.insert(pdef, local);
     }
 
-    lw.lower_block(&src.body);
-
-    // Implicit return for functions that fall off the end
-    lw.terminate(Terminator::Return(None));
+    let body_val = lw.lower_block_value(&src.body);
+    if lw.f.ret_ty != a.prims.unit {
+        lw.terminate(Terminator::Return(Some(body_val)));
+    } else {
+        lw.terminate(Terminator::Return(None));
+    }
 
     verify(&lw.f);
     lw.f

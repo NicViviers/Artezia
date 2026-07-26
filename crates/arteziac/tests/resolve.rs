@@ -68,7 +68,7 @@ fn dump_resolution(
 #[test]
 fn use_before_definition() {
     insta::assert_snapshot!(check(
-        "func a() { b() }\nfunc b() { }"
+        "func a() { b(); }\nfunc b() { }"
     ));
 }
 
@@ -78,7 +78,7 @@ fn use_before_definition() {
 #[test]
 fn shadowing_inner_init_sees_outer() {
     insta::assert_snapshot!(check(
-        "func f() {\n let x = 1\n if true {\n let x = x\n }\n}"
+        "func f() { let x = 1; if true { let x = x; } }"
     ));
 }
 
@@ -88,7 +88,7 @@ fn shadowing_inner_init_sees_outer() {
 #[test]
 fn let_x_equals_x_no_outer() {
     insta::assert_snapshot!(check(
-        "func f() {\n let x = x\n let y = x\n}"
+        "func f() { let x = x; let y = x; }"
     ));
 }
 
@@ -96,7 +96,7 @@ fn let_x_equals_x_no_outer() {
 #[test]
 fn undefined_variable() {
     insta::assert_snapshot!(check(
-        "func f() {\n let a = missing\n}"
+        "func f() { let a = missing; }"
     ));
 }
 
@@ -106,7 +106,7 @@ fn undefined_variable() {
 #[test]
 fn duplicate_same_scope() {
     insta::assert_snapshot!(check(
-        "func f() {\n let x = 1\n let x = 2\n let y = x\n}"
+        "func f() { let x = 1; let x = 2; let y = x; }"
     ));
 }
 
@@ -116,7 +116,7 @@ fn duplicate_same_scope() {
 #[test]
 fn params_and_body_shadowing() {
     insta::assert_snapshot!(check(
-        "func f(a: Int) {\n let a = a\n}"
+        "func f(a: Int) { let a = a; }"
     ));
 }
 
@@ -124,7 +124,7 @@ fn params_and_body_shadowing() {
 #[test]
 fn block_local_invisible_after() {
     insta::assert_snapshot!(check(
-        "func f() {\n if true {\n let t = 1\n }\n let u = t\n}"
+        "func f() { if true { let t = 1; }\n let u = t; }"
     ));
 }
 
@@ -132,7 +132,7 @@ fn block_local_invisible_after() {
 #[test]
 fn while_body_scopes() {
     insta::assert_snapshot!(check(
-        "func f() {\n while true {\n let t = 1\n }\n let u = t\n}"
+        "func f() { while true { let t = 1; }\n let u = t;}"
     ));
 }
 
@@ -140,7 +140,7 @@ fn while_body_scopes() {
 #[test]
 fn for_var_scoping() {
     insta::assert_snapshot!(check(
-        "func f() {\n for i in 0 .. i {\n let a = i\n }\n let b = i\n}"
+        "func f() { for i in 0 .. i { let a = i; }\n let b = i; }"
     ));
     // expect: "cannot find `i`" TWICE - once in the iter (0 .. i),
     // once after the loop - and the body use resolves fine
@@ -151,7 +151,7 @@ fn for_var_scoping() {
 #[test]
 fn poison_zero_width_names() {
     insta::assert_snapshot!(check(
-        "func f() {\n let = 5\n let ok = 1\n}"
+        "func f() { let = 5; let ok = 1; }"
     ));
 }
 
@@ -159,6 +159,6 @@ fn poison_zero_width_names() {
 #[test]
 fn import_introduces_name() {
     insta::assert_snapshot!(check(
-        "import std::io\nfunc f() { io() }"
+        "import std::io;\nfunc f() { io(); }"
     ));
 }

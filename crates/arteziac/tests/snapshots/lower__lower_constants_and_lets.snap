@@ -1,6 +1,6 @@
 ---
 source: crates/arteziac/tests/lower.rs
-expression: "check(\"func main() {\\n let a = 1\\n let b = 5.5\\n let c = \\\"\\\"\\n let d = 'a'\\n let e = 10ms\\n let f = true\\n}\")"
+expression: "check(\"func main() { let a = 1; let b = 5.5; let c = \\\"\\\"; let d = 'a'; let e = 10ms; let f = true; }\")"
 ---
 func main() -> Unit {
   local %0: Int (a)
@@ -22,5 +22,6 @@ func main() -> Unit {
     store %4, v4
     v5 = const.bool true
     store %5, v5
+    v6 = const.unit
     return
 }

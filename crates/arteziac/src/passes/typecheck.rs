@@ -221,7 +221,11 @@ impl Checker<'_> {
             self.check_stmt(s);
         }
 
-        let ty = self.a.prims.unit;
+        let ty = match &b.tail {
+            Some(e) => self.check_expr(e),
+            None => self.a.prims.unit
+        };
+
         self.a.types.insert(b.id, ty);
 
         ty
@@ -369,6 +373,7 @@ impl Checker<'_> {
                 let c = self.check_expr(cond);
                 self.expect_type(c, p.boolean, cond.span());
                 let t = self.check_block(then);
+
                 match els {
                     Some(e) => {
                         let f = self.check_expr(e);
@@ -436,6 +441,7 @@ impl Checker<'_> {
 
 fn block_always_returns(b: &ast::Block) -> bool {
     b.stmts.iter().any(stmt_always_returns)
+        || b.tail.is_some()
 }
 
 fn stmt_always_returns(s: &ast::Stmt) -> bool {

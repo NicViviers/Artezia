@@ -1,6 +1,6 @@
 ---
 source: crates/arteziac/tests/lower.rs
-expression: "check(\"func main() {\\n let x = 1 + 2 * 3\\n}\")"
+expression: "check(\"func main() { let x = 1 + 2 * 3; }\")"
 ---
 func main() -> Unit {
   local %0: Int (x)
@@ -11,5 +11,6 @@ func main() -> Unit {
     v3 = mul v1, v2
     v4 = add v0, v3
     store %0, v4
+    v5 = const.unit
     return
 }

@@ -78,6 +78,7 @@ impl Type {
 pub struct Block {
     pub id: NodeId, // blocks are scopes -> resolution pushes/pops on them, and blocks-as-expressions have types
     pub stmts: Vec<Stmt>,
+    pub tail: Option<Box<Expr>>,
     pub span: Span, // `{` through `}`
 }
 

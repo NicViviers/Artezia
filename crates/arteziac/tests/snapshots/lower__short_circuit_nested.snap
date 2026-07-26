@@ -1,6 +1,6 @@
 ---
 source: crates/arteziac/tests/lower.rs
-expression: "check(\"func main(a: Bool, b: Bool, c: Bool) {\\n let x = a and b and c\\n}\")"
+expression: "check(\"func main(a: Bool, b: Bool, c: Bool) { let x = a and b and c; }\")"
 ---
 func main(%0, %1, %2) -> Unit {
   local %0: Bool (a)
@@ -30,6 +30,7 @@ func main(%0, %1, %2) -> Unit {
   bb5:
     v6 = load %4
     store %5, v6
+    v7 = const.unit
     return
   bb6:
     v4 = const.bool false

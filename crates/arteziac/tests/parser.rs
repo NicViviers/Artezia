@@ -9,45 +9,45 @@ fn check(src: &str) -> String {
 
 #[test]
 fn precedence() {
-    assert_snapshot!(check("func f() { let x = 1 + 2 * 3 ** 2 ** 2 }"));
+    assert_snapshot!(check("func f() { let x = 1 + 2 * 3 ** 2 ** 2; }"));
 }
 
 #[test]
 fn postfix_chain() {
-    assert_snapshot!(check("func f() { a.b(1).c[0].d() }"));
+    assert_snapshot!(check("func f() { a.b(1).c[0].d(); }"));
 }
 
 #[test]
 fn newline_cont() {
-    assert_snapshot!(check("func f() {\n let a = 1 +\n 2\n let b = a\n}"));
+    assert_snapshot!(check("func f() { let a = 1 +\n 2;\n let b = a; }"));
 }
 
 #[test]
 fn concurrency() {
-    assert_snapshot!(check("func f() { scope { spawn work(1) } }"));
+    assert_snapshot!(check("func f() { scope { spawn work(1); } }"));
 }
 
 #[test]
 fn recovery() {
-    assert_snapshot!(check("func f() {\n let = 5\n let ok = 1\n}"));
+    assert_snapshot!(check("func f() { let = 5;\n let ok = 1; }"));
 }
 
 #[test]
 fn ranges() {
-    insta::assert_snapshot!(check("func f() { let r = 0 .. 10 }"));
+    insta::assert_snapshot!(check("func f() { let r = 0 .. 10; }"));
 }
 #[test]
 fn range_precedence() {
-    insta::assert_snapshot!(check("func f() { let r = 0 .. n + 1 }"));
+    insta::assert_snapshot!(check("func f() { let r = 0 .. n + 1; }"));
     // must nest as Range(0, Add(n, 1)) 0 additive (11) binds tighter than range (9)
 }
 
 #[test]
 fn empty_char_diagnoses() {
-    insta::assert_snapshot!(check("func f() { let d = '' }")) // Should produce 1 diagnostic
+    insta::assert_snapshot!(check("func f() { let d = ''; }")) // Should produce 1 diagnostic
 }
 
 #[test]
 fn stray_garbage_recovers() {
-    insta::assert_snapshot!(check("func f() { let x = § }")) // Should produce 1 diagnostic
+    insta::assert_snapshot!(check("func f() { let x = §; }")) // Should produce 1 diagnostic
 }

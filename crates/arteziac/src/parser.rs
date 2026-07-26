@@ -356,8 +356,8 @@ impl Parser {
     }
 
     /// Skip any run of statement terminators (blank lines, stray semicolons)
-    fn skip_stmt_ends(&mut self) {
-        while self.eat(Token::StmtEnd).is_some() {}
+    fn skip_semicolons(&mut self) {
+        while self.eat(Token::Semi).is_some() {}
     }
 
     fn parse_type(&mut self) -> Option<ast::Type> {
@@ -397,7 +397,7 @@ impl Parser {
             Token::Let => self.parse_let(),
             Token::Return => {
                 let start = self.advance();
-                let value = if matches!(self.cur().0, Token::StmtEnd | Token::RBrace | Token::EOF) {
+                let value = if matches!(self.cur().0, Token::Semi | Token::RBrace | Token::EOF) {
                     None
                 } else {
                     Some(self.parse_expr(0)?)
@@ -448,7 +448,7 @@ impl Parser {
         loop {
             match self.cur().0 {
                 Token::EOF => return,
-                Token::StmtEnd => { self.advance(); return; }
+                Token::Semi => { self.advance(); return; }
                 Token::RBrace => return,
                 Token::Func | Token::Let | Token::If | Token::While | Token::For | Token::Return | Token::Scope => return,
                 _ => { self.advance(); }
@@ -459,20 +459,75 @@ impl Parser {
     fn parse_block(&mut self) -> Option<ast::Block> {
         let start = self.expect(Token::LBrace, "a block");
         let mut stmts = Vec::new();
-        self.skip_stmt_ends();
+        let mut tail = None;
+        self.skip_semicolons();
 
         while !matches!(self.cur().0, Token::RBrace | Token::EOF) {
             let before = self.pos;
-            match self.parse_stmt() {
-                Some(s) => stmts.push(s),
-                None => self.synchronize(),
+
+            match self.cur().0 {
+                Token::Let | Token::Return | Token::Break | Token::Continue => {
+                    if let Some(s) = self.parse_stmt() {
+                        self.expect(Token::Semi, "`;` after a statement");
+                        stmts.push(s);
+                    } else {
+                        self.synchronize();
+                    }
+                }
+
+                Token::If | Token::While | Token::For => {
+                    if let Some(e) = self.parse_expr(0) {
+                        if matches!(self.cur().0, Token::RBrace) {
+                            tail = Some(Box::new(e));
+                        } else {
+                            stmts.push(ast::Stmt::Expr(e));
+                            self.eat(Token::Semi); // optional stray semi-colon
+                        }
+                    } else {
+                        self.synchronize();
+                    }
+                }
+
+                _ => {
+                    if let Some(e) = self.parse_expr(0) {
+                        match self.cur().0 {
+                            Token::Semi => {
+                                self.advance();
+                                stmts.push(ast::Stmt::Expr(e));
+                            }
+
+                            Token::RBrace => {
+                                tail = Some(Box::new(e));
+                                break;
+                            }
+
+                            _ => {
+                                self.diags.push(Diagnostic::new(
+                                    Severity::Error,
+                                    self.cur().1,
+                                    format!("expected `;` or `}}`, found {}", self.cur().0.describe())
+                                ));
+
+                                self.synchronize();
+                            }
+                        }
+                    } else {
+                        self.synchronize();
+                    }
+                }
             }
+
             debug_assert!(self.pos > before, "no progress in block at {:?}", self.cur());
-            self.skip_stmt_ends();
+            self.skip_semicolons();
         }
 
         let end = self.expect(Token::RBrace, "the end of a block");
-        Some(ast::Block { id: self.mk_id(), stmts, span: join(&start, &end) })
+        Some(ast::Block {
+            id: self.mk_id(),
+            stmts,
+            tail,
+            span: join(&start, &end)
+        })
     }
 
     fn parse_func(&mut self) -> Option<ast::Func> {
@@ -534,7 +589,7 @@ impl Parser {
 
     pub fn parse_file(mut self) -> (ast::File, Vec<Diagnostic>) {
         let mut items = Vec::new();
-        self.skip_stmt_ends();
+        self.skip_semicolons();
 
         while self.cur().0 != Token::EOF {
             let before = self.pos;
@@ -545,7 +600,7 @@ impl Parser {
             }
 
             debug_assert!(self.pos > before);
-            self.skip_stmt_ends();
+            self.skip_semicolons();
         }
 
         (ast::File { items }, self.diags)
