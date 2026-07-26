@@ -1,6 +1,6 @@
 ---
 source: crates/arteziac/tests/parser.rs
-expression: "check(\"func f() { scope { spawn work(1) } }\")"
+expression: "check(\"func f() { scope { spawn work(1); } }\")"
 ---
 File {
     items: [
@@ -17,61 +17,61 @@ File {
                         7,
                     ),
                     stmts: [
-                        Expr(
-                            Scope {
+                        Scope {
+                            id: NodeId(
+                                6,
+                            ),
+                            body: Block {
                                 id: NodeId(
-                                    6,
+                                    5,
                                 ),
-                                body: Block {
-                                    id: NodeId(
-                                        5,
-                                    ),
-                                    stmts: [
-                                        Expr(
-                                            Spawn {
+                                stmts: [
+                                    Expr(
+                                        Spawn {
+                                            id: NodeId(
+                                                4,
+                                            ),
+                                            call: Call {
                                                 id: NodeId(
-                                                    4,
+                                                    3,
                                                 ),
-                                                call: Call {
+                                                callee: Var {
                                                     id: NodeId(
-                                                        3,
+                                                        0,
                                                     ),
-                                                    callee: Var {
+                                                    span: 25..29,
+                                                },
+                                                args: [
+                                                    Arg {
                                                         id: NodeId(
-                                                            0,
+                                                            2,
                                                         ),
-                                                        span: 25..29,
-                                                    },
-                                                    args: [
-                                                        Arg {
+                                                        name_span: None,
+                                                        value: Int {
                                                             id: NodeId(
-                                                                2,
+                                                                1,
                                                             ),
-                                                            name_span: None,
-                                                            value: Int {
-                                                                id: NodeId(
-                                                                    1,
-                                                                ),
-                                                                span: 30..31,
-                                                            },
                                                             span: 30..31,
                                                         },
-                                                    ],
-                                                    span: 25..32,
-                                                },
-                                                span: 19..32,
+                                                        span: 30..31,
+                                                    },
+                                                ],
+                                                span: 25..32,
                                             },
-                                        ),
-                                    ],
-                                    span: 17..34,
-                                },
-                                span: 11..34,
+                                            span: 19..32,
+                                        },
+                                    ),
+                                ],
+                                tail: None,
+                                span: 17..35,
                             },
-                        ),
+                            span: 11..35,
+                        },
                     ],
-                    span: 9..36,
+                    tail: None,
+                    span: 9..37,
                 },
-                span: 0..36,
+                span: 0..37,
             },
         ),
     ],

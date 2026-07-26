@@ -290,6 +290,10 @@ impl Checker<'_> {
                     );
                 }
             }
+
+            ast::Stmt::Scope { body, .. } => {
+                self.check_block(body);
+            }
         }
     }
 
@@ -391,11 +395,6 @@ impl Checker<'_> {
                 self.expect_type(ht, p.int, hi.span());
                 
                 p.range
-            }
-
-            ast::Expr::Scope { body, .. } => {
-                self.check_block(body);
-                p.unit
             }
 
             ast::Expr::Spawn { call, .. } => {

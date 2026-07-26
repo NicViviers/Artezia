@@ -1,20 +1,26 @@
 ---
 source: crates/arteziac/tests/lower.rs
-expression: "check(\"func main() { for i in 0 ..= 10 { ; } }\")"
+expression: "check(\"func f() -> Int { return 10; }  func main() { for i in 0 .. f() { ; } }\")"
 ---
+func f() -> Int {
+  bb0:
+    v0 = const.int 10
+    return v0
+}
+
 func main() -> Unit {
   local %0: Int (i)
   local %1: Int
   bb0:
     v0 = const.int 0
     store %0, v0
-    v1 = const.int 10
+    v1 = call f ()
     store %1, v1
     jump bb1
   bb1:
     v2 = load %0
     v3 = load %1
-    v4 = cmp.le v2, v3
+    v4 = cmp.lt v2, v3
     branch v4 -> bb2, bb4
   bb2:
     jump bb3

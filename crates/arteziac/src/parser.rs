@@ -149,18 +149,20 @@ impl Parser {
                 Some(ast::Expr::Unary { id: self.mk_id(), op: ast::UnOp::Neg, rhs: Box::new(rhs), span })
             }
 
-            Token::If => self.parse_if(),
-            Token::LBrace => self.parse_block().map(|b| ast::Expr::Block(b)),
-            Token::Scope => {
+            Token::Not => {
                 let start = self.advance();
-                let body = self.parse_block()?;
-                let span = join(&start, &body.span);
-                Some(ast::Expr::Scope {
+                let rhs = self.parse_expr(23)?;
+                let span = join(&start, &rhs.span());
+                Some(ast::Expr::Unary {
                     id: self.mk_id(),
-                    body,
+                    op: ast::UnOp::Not,
+                    rhs: Box::new(rhs),
                     span
                 })
             }
+
+            Token::If => self.parse_if(),
+            Token::LBrace => self.parse_block().map(|b| ast::Expr::Block(b)),
 
             Token::Spawn => {
                 let start = self.advance();
@@ -440,6 +442,33 @@ impl Parser {
                 })
             }
 
+            Token::Continue => {
+                let span = self.advance();
+                Some(ast::Stmt::Continue {
+                    id: self.mk_id(),
+                    span
+                })
+            }
+
+            Token::Break => {
+                let span = self.advance();
+                Some(ast::Stmt::Break {
+                    id: self.mk_id(),
+                    span
+                })
+            }
+
+            Token::Scope => {
+                let start = self.advance();
+                let body = self.parse_block()?;
+                let span = join(&start, &body.span);
+                Some(ast::Stmt::Scope {
+                    id: self.mk_id(),
+                    body,
+                    span
+                })
+            }
+
             _ => Some(ast::Stmt::Expr(self.parse_expr(0)?)) // default: expr statement
         }
     }
@@ -475,13 +504,22 @@ impl Parser {
                     }
                 }
 
-                Token::If | Token::While | Token::For => {
+                Token::While | Token::For | Token::Scope => {
+                    if let Some(s) = self.parse_stmt() {
+                        stmts.push(s);
+                    } else {
+                        self.synchronize();
+                    }
+                }
+
+                Token::If => {
                     if let Some(e) = self.parse_expr(0) {
                         if matches!(self.cur().0, Token::RBrace) {
                             tail = Some(Box::new(e));
+                            break;
                         } else {
                             stmts.push(ast::Stmt::Expr(e));
-                            self.eat(Token::Semi); // optional stray semi-colon
+                            self.eat(Token::Semi);
                         }
                     } else {
                         self.synchronize();

@@ -1,6 +1,6 @@
 ---
 source: crates/arteziac/tests/parser.rs
-expression: "check(\"func f() { let r = 0 .. n + 1 }\")"
+expression: "check(\"func f() { let r = 0 .. n + 1; }\")"
 ---
 File {
     items: [
@@ -58,9 +58,10 @@ File {
                             span: 11..29,
                         },
                     ],
-                    span: 9..31,
+                    tail: None,
+                    span: 9..32,
                 },
-                span: 0..31,
+                span: 0..32,
             },
         ),
     ],

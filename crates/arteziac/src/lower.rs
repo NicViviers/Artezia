@@ -211,6 +211,12 @@ impl<'a> Lowerer<'a> {
                 self.terminate(Terminator::Return(v))
             }
 
+            ast::Stmt::Scope { id, body, .. } => {
+                self.emit_effect(InstrKind::ScopeEnter, *id);
+                self.lower_block(body);
+                self.emit_effect(InstrKind::ScopeExit, *id);
+            }
+
             _ => todo!("lower_stmt: {s:?}")
         }
     }
@@ -358,8 +364,24 @@ impl<'a> Lowerer<'a> {
             }
 
             ast::Expr::Block(b) => {
-                self.lower_block(b);
-                self.emit(InstrKind::ConstUnit, self.a.prims.unit, origin)
+                match self.lower_block_value(b) {
+                    Some(v) => v,
+                    None => self.emit(InstrKind::ConstUnit, self.a.prims.unit, b.id)
+                }
+            }
+
+            // TODO: This isn't complete yet - return handle id to task/thread etc (Relies on artezia_rt implementation)
+            ast::Expr::Spawn { call, .. } => {
+                let ast::Expr::Call { callee, args, .. } = &**call else {
+                    unreachable!("spawn operand must be a call (typecheck/parse enforced)");
+                };
+
+                let fdef = self.a.defs[&callee.id()];
+                let arg_vals: Vec<ValueId> = args.iter().map(|a| self.lower_expr(&a.value)).collect();
+                self.emit(InstrKind::Spawn {
+                    func: fdef,
+                    args: arg_vals
+                }, ty, e.id())
             }
 
             _ => todo!("lower_expr: {e:?}")

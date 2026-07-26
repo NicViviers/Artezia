@@ -1,11 +1,11 @@
 ---
 source: crates/arteziac/tests/resolve.rs
-expression: "check(\"func f() {\\n let x = x\\n let y = x\\n}\")"
+expression: "check(\"func f() { let x = x; let y = x; }\")"
 ---
 def 0: Func `f` @ 5..6
-def 1: Local `x` @ 16..17
-def 2: Local `y` @ 27..28
+def 1: Local `x` @ 15..16
+def 2: Local `y` @ 26..27
 use `x` (node 2) -> def 1
 --- parse diagnostics: 0
 --- resolve diagnostics ---
-Error @ 20..21: cannot find `x` in this scope
+Error @ 19..20: cannot find `x` in this scope

@@ -1,6 +1,6 @@
 ---
 source: crates/arteziac/tests/parser.rs
-expression: "check(\"func f() {\\n let = 5\\n let ok = 1\\n}\")"
+expression: "check(\"func f() { let = 5;\\n let ok = 1; }\")"
 ---
 File {
     items: [
@@ -21,15 +21,15 @@ File {
                             id: NodeId(
                                 1,
                             ),
-                            name_span: 16..16,
+                            name_span: 15..15,
                             ty: None,
                             init: Int {
                                 id: NodeId(
                                     0,
                                 ),
-                                span: 18..19,
+                                span: 17..18,
                             },
-                            span: 12..19,
+                            span: 11..18,
                         },
                         Let {
                             id: NodeId(
@@ -46,9 +46,10 @@ File {
                             span: 21..31,
                         },
                     ],
-                    span: 9..33,
+                    tail: None,
+                    span: 9..34,
                 },
-                span: 0..33,
+                span: 0..34,
             },
         ),
     ],
@@ -57,7 +58,7 @@ File {
 [
     Diagnostic {
         severity: Error,
-        span: 16..16,
+        span: 15..15,
         message: "expected an identifier, found `=`",
         label: None,
         notes: [

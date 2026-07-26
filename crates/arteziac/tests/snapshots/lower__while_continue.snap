@@ -1,6 +1,6 @@
 ---
 source: crates/arteziac/tests/lower.rs
-expression: "check(\"func main(c: Bool) { while c { ; } }\")"
+expression: "check(\"func main(c: Bool) { while c { continue; } }\")"
 ---
 func main(%0) -> Unit {
   local %0: Bool (c)

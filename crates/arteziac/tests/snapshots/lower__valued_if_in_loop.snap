@@ -1,0 +1,32 @@
+---
+source: crates/arteziac/tests/lower.rs
+expression: "check(\"func main(c: Bool) { while c { let x = if c { 1 } else { 2 }; } }\")"
+---
+func main(%0) -> Unit {
+  local %0: Bool (c)
+  local %1: Int
+  local %2: Int (x)
+  bb0:
+    jump bb1
+  bb1:
+    v0 = load %0
+    branch v0 -> bb2, bb3
+  bb2:
+    v1 = load %0
+    branch v1 -> bb4, bb6
+  bb3:
+    v5 = const.unit
+    return
+  bb4:
+    v2 = const.int 1
+    store %1, v2
+    jump bb5
+  bb5:
+    v4 = load %1
+    store %2, v4
+    jump bb1
+  bb6:
+    v3 = const.int 2
+    store %1, v3
+    jump bb5
+}

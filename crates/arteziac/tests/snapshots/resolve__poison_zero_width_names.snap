@@ -1,8 +1,8 @@
 ---
 source: crates/arteziac/tests/resolve.rs
-expression: "check(\"func f() {\\n let = 5\\n let ok = 1\\n}\")"
+expression: "check(\"func f() { let = 5; let ok = 1; }\")"
 ---
 def 0: Func `f` @ 5..6
-def 1: Local `ok` @ 25..27
+def 1: Local `ok` @ 24..26
 --- parse diagnostics: 1
 --- resolve diagnostics ---

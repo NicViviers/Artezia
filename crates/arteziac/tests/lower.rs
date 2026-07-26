@@ -39,7 +39,14 @@ fn lower_unary_neg() {
 
 #[test]
 fn lower_unary_not() {
-    insta::assert_snapshot!(check("func main() {let b = not true;}"));
+    // TODO: Panics because "not true" isn't being seen as an expression here so parser expects an expr and semi-colon
+    // thread 'lower_unary_not' (118065) panicked at crates/arteziac/tests/lower.rs:10:5:
+    //     parse errors: [Diagnostic { severity: Error, span: 21..24, message: "expected an expression, found `not`", label: None, notes: [], code: None },
+    //     Diagnostic { severity: Error, span: 21..21, message: "expected a semi-colon, found `not`", label: None,
+    //     notes: ["while parsing `;` after a statement"], code: None },
+    //     Diagnostic { severity: Error, span: 21..24, message: "expected an expression, found `not`", label: None, notes: [], code: None },
+    //     Diagnostic { severity: Error, span: 21..24, message: "expected `;` or `}`, found `not`", label: None, notes: [], code: None }]
+    insta::assert_snapshot!(check("func main() { let b = not true; }"));
 }
 
 #[test]
@@ -171,7 +178,7 @@ fn for_basic() {
 #[test]
 fn for_uses_loop_var() {
     insta::assert_snapshot!(check(
-        "func main(n: Int) { for i in 0 .. n {\n let x = i\n } }"
+        "func main(n: Int) { for i in 0 .. n {\n let x = i;\n } }"
     ));
 }
 

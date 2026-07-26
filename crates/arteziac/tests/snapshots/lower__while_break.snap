@@ -1,6 +1,6 @@
 ---
 source: crates/arteziac/tests/lower.rs
-expression: "check(\"func main(c: Bool) { while c { ; } }\")"
+expression: "check(\"func main(c: Bool) { while c { break; } }\")"
 ---
 func main(%0) -> Unit {
   local %0: Bool (c)
@@ -10,7 +10,7 @@ func main(%0) -> Unit {
     v0 = load %0
     branch v0 -> bb2, bb3
   bb2:
-    jump bb1
+    jump bb3
   bb3:
     v1 = const.unit
     return

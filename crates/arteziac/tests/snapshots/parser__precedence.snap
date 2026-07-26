@@ -1,6 +1,6 @@
 ---
 source: crates/arteziac/tests/parser.rs
-expression: "check(\"func f() { let x = 1 + 2 * 3 ** 2 ** 2 }\")"
+expression: "check(\"func f() { let x = 1 + 2 * 3 ** 2 ** 2; }\")"
 ---
 File {
     items: [
@@ -84,9 +84,10 @@ File {
                             span: 11..38,
                         },
                     ],
-                    span: 9..40,
+                    tail: None,
+                    span: 9..41,
                 },
-                span: 0..40,
+                span: 0..41,
             },
         ),
     ],

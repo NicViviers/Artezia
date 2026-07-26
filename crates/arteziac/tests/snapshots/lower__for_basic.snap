@@ -1,6 +1,6 @@
 ---
 source: crates/arteziac/tests/lower.rs
-expression: "check(\"func main() {\\n for i in 0 .. 10 {\\n let x = 1\\n }\\n}\")"
+expression: "check(\"func main() { for i in 0 .. 10 { let x = 1; } }\")"
 ---
 func main() -> Unit {
   local %0: Int (i)
@@ -28,5 +28,6 @@ func main() -> Unit {
     store %0, v8
     jump bb1
   bb4:
+    v9 = const.unit
     return
 }

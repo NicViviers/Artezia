@@ -136,7 +136,6 @@ impl Resolver<'_> {
             }
 
             ast::Expr::Block(b) => self.resolve_block(b),
-            ast::Expr::Scope { body, .. } => self.resolve_block(body),
             ast::Expr::Spawn { call, .. } => self.resolve_expr(call),
             ast::Expr::Within { dur, body, els, .. } => {
                 self.resolve_expr(dur);
@@ -189,6 +188,8 @@ impl Resolver<'_> {
                     self.resolve_expr(v);
                 }
             }
+
+            ast::Stmt::Scope { body, .. } => self.resolve_block(body),
 
             ast::Stmt::Break { .. } | ast::Stmt::Continue { .. } => {}
         }

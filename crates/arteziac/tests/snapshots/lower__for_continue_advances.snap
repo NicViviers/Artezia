@@ -1,6 +1,6 @@
 ---
 source: crates/arteziac/tests/lower.rs
-expression: "check(\"func main() { for i in 0 ..= 10 { ; } }\")"
+expression: "check(\"func main() { for i in 0 .. 10 { continue; } }\")"
 ---
 func main() -> Unit {
   local %0: Int (i)
@@ -14,7 +14,7 @@ func main() -> Unit {
   bb1:
     v2 = load %0
     v3 = load %1
-    v4 = cmp.le v2, v3
+    v4 = cmp.lt v2, v3
     branch v4 -> bb2, bb4
   bb2:
     jump bb3

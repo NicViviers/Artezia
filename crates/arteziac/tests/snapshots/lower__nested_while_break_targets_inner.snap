@@ -1,0 +1,25 @@
+---
+source: crates/arteziac/tests/lower.rs
+expression: "check(\"func main(c: Bool, d: Bool) { while c { while d { break; } } }\")"
+---
+func main(%0, %1) -> Unit {
+  local %0: Bool (c)
+  local %1: Bool (d)
+  bb0:
+    jump bb1
+  bb1:
+    v0 = load %0
+    branch v0 -> bb2, bb3
+  bb2:
+    jump bb4
+  bb3:
+    v2 = const.unit
+    return
+  bb4:
+    v1 = load %1
+    branch v1 -> bb5, bb6
+  bb5:
+    jump bb6
+  bb6:
+    jump bb1
+}

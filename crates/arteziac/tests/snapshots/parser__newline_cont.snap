@@ -1,6 +1,6 @@
 ---
 source: crates/arteziac/tests/parser.rs
-expression: "check(\"func f() {\\n let a = 1 +\\n 2\\n let b = a\\n}\")"
+expression: "check(\"func f() { let a = 1 +\\n 2;\\n let b = a; }\")"
 ---
 File {
     items: [
@@ -21,7 +21,7 @@ File {
                             id: NodeId(
                                 3,
                             ),
-                            name_span: 16..17,
+                            name_span: 15..16,
                             ty: None,
                             init: Binary {
                                 id: NodeId(
@@ -32,17 +32,17 @@ File {
                                     id: NodeId(
                                         0,
                                     ),
-                                    span: 20..21,
+                                    span: 19..20,
                                 },
                                 rhs: Int {
                                     id: NodeId(
                                         1,
                                     ),
-                                    span: 25..26,
+                                    span: 24..25,
                                 },
-                                span: 20..26,
+                                span: 19..25,
                             },
-                            span: 12..26,
+                            span: 11..25,
                         },
                         Let {
                             id: NodeId(
@@ -59,9 +59,10 @@ File {
                             span: 28..37,
                         },
                     ],
-                    span: 9..39,
+                    tail: None,
+                    span: 9..40,
                 },
-                span: 0..39,
+                span: 0..40,
             },
         ),
     ],

@@ -104,6 +104,7 @@ pub enum Stmt {
     Return { id: NodeId, value: Option<Expr>, span: Span },
     Break { id: NodeId, span: Span },
     Continue { id: NodeId, span: Span },
+    Scope  { id: NodeId, body: Block, span: Span },
     // v-next: Defer { id, expr: Expr, span }
 }
 
@@ -191,7 +192,6 @@ pub enum Expr {
     Block(Block),                 // a bare `{ ... }` in expression position
 
     // ---- concurrency ----
-    Scope  { id: NodeId, body: Block, span: Span },
     Spawn  { id: NodeId, call: Box<Expr>, span: Span },
     Within {
         id: NodeId,
@@ -236,23 +236,25 @@ pub enum BinOp {
 impl Expr {
     pub fn id(&self) -> NodeId {
         use Expr::*;
+        
         match self {
-            Int{id,..} | Float{id,..} | Str{id,..} | Char{id,..} | Duration{id,..}
-            | Bool{id,..} | Var{id,..} | Unary{id,..} | Binary{id,..} | Assign{id,..}
-            | Call{id,..} | Field{id,..} | Index{id,..} | Range{id,..} | If{id,..}
-            | Scope{id,..} | Spawn{id,..} | Within{id,..} | Error{id,..} => *id,
+            Int { id, .. } | Float { id, .. } | Str { id, .. } | Char { id, .. } | Duration { id, .. }
+            | Bool { id, .. } | Var { id, .. } | Unary { id, .. } | Binary { id, .. } | Assign { id, .. }
+            | Call { id, .. } | Field { id, .. } | Index { id, .. } | Range { id, .. } | If { id, .. }
+            | Spawn { id, .. } | Within { id, .. } | Error { id, .. } => *id,
             Block(b) => b.id,
         }
     }
 
     pub fn span(&self) -> Span {
         use Expr::*;
+
         match self {
-            Int{span,..} | Float{span,..} | Str{span,..} | Char{span,..}
-            | Duration{span,..} | Bool{span,..} | Var{span,..} | Unary{span,..}
-            | Binary{span,..} | Assign{span,..} | Call{span,..} | Field{span,..}
-            | Index{span,..} | Range{span,..} | If{span,..} | Scope{span,..}
-            | Spawn{span,..} | Within{span,..} | Error{span,..} => span.clone(),
+            Int { span, .. } | Float { span, .. } | Str { span, .. } | Char { span, .. }
+            | Duration { span, .. } | Bool { span, .. } | Var { span, .. } | Unary { span, .. }
+            | Binary { span, .. } | Assign { span, .. } | Call { span, .. } | Field { span, .. }
+            | Index { span, .. } | Range { span, .. } | If { span, .. }
+            | Spawn { span, .. } | Within { span, .. } | Error { span, .. } => span.clone(),
             Block(b) => b.span.clone(),
         }
     }
@@ -261,9 +263,10 @@ impl Expr {
 impl Stmt {
     pub fn span(&self) -> Span {
         use Stmt::*;
+
         match self {
-            Let{span,..} | While{span,..} | For{span,..} | Return{span,..}
-            | Break{span,..} | Continue{span,..} => span.clone(),
+            Let { span, .. } | While { span, .. } | For { span, .. } | Return { span, .. }
+            | Break { span, .. } | Continue { span, .. } | Scope{ span, .. } => span.clone(),
             Expr(e) => e.span(),
         }
     }

@@ -43,15 +43,20 @@ impl Decoder<'_> {
                 self.walk_expr(cond);
                 self.walk_block(body);
             }
+
             ast::Stmt::For { iter, body, .. } => {
                 self.walk_expr(iter);
                 self.walk_block(body);
             }
+
             ast::Stmt::Return { value, .. } => {
                 if let Some(v) = value {
                     self.walk_expr(v);
                 }
             }
+
+            ast::Stmt::Scope { body, .. } => self.walk_block(body),
+
             ast::Stmt::Break { .. } | ast::Stmt::Continue { .. } => {}
         }
     }
@@ -70,25 +75,30 @@ impl Decoder<'_> {
                 self.walk_expr(lhs);
                 self.walk_expr(rhs);
             }
+
             ast::Expr::Assign { target, value, .. } => {
                 self.walk_expr(target);
                 self.walk_expr(value);
             }
+
             ast::Expr::Call { callee, args, .. } => {
                 self.walk_expr(callee);
                 for arg in args {
                     self.walk_expr(&arg.value);
                 }
             }
+
             ast::Expr::Field { obj, .. } => self.walk_expr(obj),
             ast::Expr::Index { obj, index, .. } => {
                 self.walk_expr(obj);
                 self.walk_expr(index);
             }
+
             ast::Expr::Range { lo, hi, .. } => {
                 self.walk_expr(lo);
                 self.walk_expr(hi);
             }
+
             ast::Expr::If { cond, then, els, .. } => {
                 self.walk_expr(cond);
                 self.walk_block(then);
@@ -96,8 +106,8 @@ impl Decoder<'_> {
                     self.walk_expr(e);
                 }
             }
+
             ast::Expr::Block(b) => self.walk_block(b),
-            ast::Expr::Scope { body, .. } => self.walk_block(body),
             ast::Expr::Spawn { call, .. } => self.walk_expr(call),
             ast::Expr::Within { dur, body, els, .. } => {
                 self.walk_expr(dur);

@@ -1,0 +1,13 @@
+---
+source: crates/arteziac/tests/lower.rs
+expression: "check(\"func main() { let b = not true; }\")"
+---
+func main() -> Unit {
+  local %0: Bool (b)
+  bb0:
+    v0 = const.bool true
+    v1 = not v0
+    store %0, v1
+    v2 = const.unit
+    return
+}

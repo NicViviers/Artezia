@@ -1,6 +1,6 @@
 ---
 source: crates/arteziac/tests/parser.rs
-expression: "check(\"func f() { a.b(1).c[0].d() }\")"
+expression: "check(\"func f() { a.b(1).c[0].d(); }\")"
 ---
 File {
     items: [
@@ -87,9 +87,10 @@ File {
                             },
                         ),
                     ],
-                    span: 9..28,
+                    tail: None,
+                    span: 9..29,
                 },
-                span: 0..28,
+                span: 0..29,
             },
         ),
     ],
