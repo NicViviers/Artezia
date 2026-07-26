@@ -47,13 +47,13 @@ pub struct Param {
 }
 
 // ============================================================================
-// Types (SYNTAX of types — not to be confused with the checker's TypeId/Type;
+// Types (SYNTAX of types - not to be confused with the checker's TypeId/Type;
 // this is what the user WROTE, the checker computes what it MEANS)
 // ============================================================================
 
 #[derive(Debug, PartialEq)]
 pub enum Type {
-    /// `Int`, `std::collections::HashMap` — a (possibly dotted) path.
+    /// `Int`, `std::collections::HashMap` - a (possibly dotted) path.
     Named { id: NodeId, path: Vec<Span>, span: Span },
     // v-next:
     // Optional { id, inner: Box<Type>, span },          // T?
@@ -96,7 +96,7 @@ pub enum Stmt {
     While { id: NodeId, cond: Expr, body: Block, span: Span },
     For {
         id: NodeId,
-        var_span: Span, // loop variable — also a definition site
+        var_span: Span, // loop variable - also a definition site
         iter: Expr,
         body: Block,
         span: Span,
@@ -175,7 +175,7 @@ pub enum Expr {
         id: NodeId,
         lo: Box<Expr>,
         hi: Box<Expr>,
-        inclusive: bool,          // `..` vs `..=` — token identity, like Bool
+        inclusive: bool,          // `..` vs `..=` - token identity, like Bool
         span: Span,
     },
 
@@ -185,7 +185,7 @@ pub enum Expr {
         cond: Box<Expr>,
         then: Block,
         /// None = no else. Some(Expr) is either Expr::Block (plain else)
-        /// or Expr::If (else-if chain) — one field handles both.
+        /// or Expr::If (else-if chain) - one field handles both.
         els: Option<Box<Expr>>,
         span: Span,
     },
@@ -215,7 +215,7 @@ pub struct Arg {
 }
 
 // ============================================================================
-// Operators — pure token identity, no spans needed (the Expr carries the span)
+// Operators - pure token identity, no spans needed (the Expr carries the span)
 // ============================================================================
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -230,7 +230,7 @@ pub enum BinOp {
 
 // ============================================================================
 // The two accessors every pass needs. (This is the full extent of AST
-// "methods" — anything smarter belongs in a pass.)
+// "methods" - anything smarter belongs in a pass.)
 // ============================================================================
 
 impl Expr {

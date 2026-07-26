@@ -1,0 +1,11 @@
+---
+source: crates/arteziac/tests/codegen.rs
+expression: "check(\"func answer() -> Int { return 42; }\")"
+---
+; ModuleID = 'artezia'
+source_filename = "artezia"
+
+define i64 @answer() {
+bb0:
+  ret i64 42
+}
