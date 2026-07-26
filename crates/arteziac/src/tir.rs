@@ -43,13 +43,14 @@ pub enum Terminator {
     Return(Option<ValueId>), // None = return unit
     Jump(BlockId),
     Branch { cond: ValueId, then_bb: BlockId, else_bb: BlockId },
+    Unreachable, // LLVM `unreachable`
     Unfinished // Placeholder during construction only; lowering must replace every instance
 }
 
 impl Terminator {
     pub fn targets(&self) -> Vec<BlockId> {
         match self {
-            Terminator::Return(_) | Terminator::Unfinished => Vec::new(),
+            Terminator::Return(_) | Terminator::Unreachable | Terminator::Unfinished => Vec::new(),
             Terminator::Jump(b) => vec![*b],
             Terminator::Branch { then_bb, else_bb, .. } => vec![*then_bb, *else_bb]
         }
@@ -59,7 +60,7 @@ impl Terminator {
         match self {
             Terminator::Return(Some(v)) => vec![*v],
             Terminator::Branch { cond, .. } => vec![*cond],
-            Terminator::Return(None) | Terminator::Jump(_) | Terminator::Unfinished => vec![],
+            Terminator::Return(None) | Terminator::Jump(_) | Terminator::Unreachable | Terminator::Unfinished => vec![],
         }
     }
 }
@@ -283,6 +284,7 @@ fn fmt_term(t: &Terminator) -> String {
         Terminator::Branch { cond, then_bb, else_bb } => {
             format!("branch v{} -> bb{}, bb{}", cond.0, then_bb.0, else_bb.0)
         }
+        Terminator::Unreachable => "Unreachable".to_string(),
         // Loud on purpose: an Unfinished terminator surviving to a dump is a
         // lowering bug, and it should scream in the snapshot, not hide
         Terminator::Unfinished => "!!! UNFINISHED !!!".to_string(),

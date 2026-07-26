@@ -1,0 +1,36 @@
+---
+source: crates/arteziac/tests/lower.rs
+expression: "check(\"func f() -> Bool { return true; }  func g() -> Bool { return false; }  func main() { let x = f() or g(); }\")"
+---
+func f() -> Bool {
+  bb0:
+    v0 = const.bool true
+    return v0
+}
+
+func g() -> Bool {
+  bb0:
+    v0 = const.bool false
+    return v0
+}
+
+func main() -> Unit {
+  local %0: Bool
+  local %1: Bool (x)
+  bb0:
+    v0 = call f ()
+    branch v0 -> bb3, bb1
+  bb1:
+    v2 = call g ()
+    store %0, v2
+    jump bb2
+  bb2:
+    v3 = load %0
+    store %1, v3
+    v4 = const.unit
+    return
+  bb3:
+    v1 = const.bool true
+    store %0, v1
+    jump bb2
+}

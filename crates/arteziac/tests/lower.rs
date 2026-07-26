@@ -21,12 +21,12 @@ fn lower_constants_and_lets() {
     insta::assert_snapshot!(check("func main() { let a = 1; let b = 5.5; let c = \"\"; let d = 'a'; let e = 10ms; let f = true; }"));
 }
 
+// TODO: Finish checking this test after implementing Return in lower_stmt
 #[test]
 fn lower_params() {
-    insta::assert_snapshot!(check("func add(a: Int, b: Int) -> Int {\n let c = 1;\n}"));
+    insta::assert_snapshot!(check("func add(a: Int, b: Int) -> Int {\n let c = 1; return c;\n}"));
 }
 
-// TODO: Test these after completing lowering
 #[test]
 fn lower_binary_precedence() {
     insta::assert_snapshot!(check("func main() { let x = 1 + 2 * 3; }"));
@@ -78,7 +78,7 @@ fn if_as_value() {
     // Result slot, both arms store it, join loads it
     // Confirm the slot appears in the locals header
     insta::assert_snapshot!(check(
-        "func main(c: Bool) { let x = if c { 1; } else { 2; } }"
+        "func main(c: Bool) { let x = if c { 1; } else { 2; }; }"
     ));
 }
 

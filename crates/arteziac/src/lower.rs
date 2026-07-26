@@ -89,6 +89,10 @@ impl<'a> Lowerer<'a> {
         self.a.symbols.resolve(self.a.definitions.info(def).name).to_string()
     }
 
+    fn current_terminated(&self) -> bool {
+        !matches!(self.f.blocks[self.cur.0 as usize].term, Terminator::Unfinished)
+    }
+
     fn lower_block(&mut self, b: &ast::Block) {
         for s in &b.stmts {
             self.lower_stmt(s);
@@ -200,6 +204,11 @@ impl<'a> Lowerer<'a> {
                 self.terminate(Terminator::Jump(cond_bb));
 
                 self.switch_to(exit_bb);
+            }
+
+            ast::Stmt::Return { value, .. } => {
+                let v = value.as_ref().map(|e| self.lower_expr(e));
+                self.terminate(Terminator::Return(v))
             }
 
             _ => todo!("lower_stmt: {s:?}")
@@ -320,11 +329,17 @@ impl<'a> Lowerer<'a> {
                 self.terminate(Terminator::Branch { cond: c, then_bb, else_bb });
 
                 self.switch_to(then_bb);
-                let tv = self.lower_block_value(then); // Block's value
-                if let Some(slot) = result {
-                    self.emit_effect(InstrKind::StoreLocal(slot, tv), origin);
+                match self.lower_block_value(then) {
+                    Some(tv) => {
+                        if let Some(slot) = result {
+                            self.emit_effect(InstrKind::StoreLocal(slot, tv), origin);
+                        }
+
+                        self.terminate(Terminator::Jump(join_bb));
+                    }
+
+                    None => {} // Branch already terminated (returned/broke) - no store, no jump
                 }
-                self.terminate(Terminator::Jump(join_bb));
 
                 if let Some(else_expr) = els {
                     self.switch_to(else_bb);
@@ -351,15 +366,19 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    fn lower_block_value(&mut self, b: &ast::Block) -> ValueId {
+    fn lower_block_value(&mut self, b: &ast::Block) -> Option<ValueId> {
         for s in &b.stmts {
             self.lower_stmt(s);
         }
+
+        if self.current_terminated() {
+            return None; // A statement returned/broke - no value, no orphan
+        }
         
-        match &b.tail {
+        Some(match &b.tail {
             Some(e) => self.lower_expr(e),
             None => self.emit(InstrKind::ConstUnit, self.a.prims.unit, b.id)
-        }
+        })
     }
 
     fn lower_short_circuit(&mut self, e: &ast::Expr) -> ValueId {
@@ -485,11 +504,16 @@ fn lower_func(src: &ast::Func, a: &Analysis) -> Function {
         lw.def_local.insert(pdef, local);
     }
 
-    let body_val = lw.lower_block_value(&src.body);
-    if lw.f.ret_ty != a.prims.unit {
-        lw.terminate(Terminator::Return(Some(body_val)));
-    } else {
-        lw.terminate(Terminator::Return(None));
+    match lw.lower_block_value(&src.body) {
+        Some(v) if lw.f.ret_ty != a.prims.unit => {
+            lw.terminate(Terminator::Return(Some(v)));
+        }
+
+        Some(_) => {
+            lw.terminate(Terminator::Return(None));
+        }
+
+        None => {} // Body already terminated (explicit return) - append nothing
     }
 
     verify(&lw.f);
