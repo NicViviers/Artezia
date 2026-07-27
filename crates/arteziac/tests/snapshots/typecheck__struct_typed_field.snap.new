@@ -1,0 +1,6 @@
+---
+source: crates/arteziac/tests/typecheck.rs
+assertion_line: 59
+expression: "check(\"struct Inner { v: Int } struct Outer { inner: Inner } \\\n         func main() -> Int { let o = Outer { inner: Inner { v: 7 } }; return o.inner.v; }\")"
+---
+no diagnostics

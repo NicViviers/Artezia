@@ -1,0 +1,37 @@
+---
+source: crates/arteziac/tests/parser.rs
+expression: "check(\"struct Foo { a: Int }\")"
+---
+File {
+    items: [
+        Struct(
+            StructDef {
+                id: NodeId(
+                    2,
+                ),
+                name_span: 7..10,
+                fields: [
+                    FieldDef {
+                        id: NodeId(
+                            1,
+                        ),
+                        name_span: 13..14,
+                        ty: Named {
+                            id: NodeId(
+                                0,
+                            ),
+                            path: [
+                                16..19,
+                            ],
+                            span: 16..19,
+                        },
+                        span: 13..19,
+                    },
+                ],
+                span: 0..21,
+            },
+        ),
+    ],
+}
+--- diagnostics ---
+[]

@@ -1,0 +1,17 @@
+---
+source: crates/arteziac/tests/lower.rs
+expression: "check(\"struct Inner { foo: Bool } struct Outer { bar: Inner } func main() { let inner = Inner { foo: true }; let outer = Outer { bar: inner }; }\")"
+---
+func main() -> Unit {
+  local %0: struct#0 (inner)
+  local %1: struct#1 (outer)
+  bb0:
+    v0 = const.bool true
+    v1 = struct.new #0 (v0)
+    store %0, v1
+    v2 = load %0
+    v3 = struct.new #1 (v2)
+    store %1, v3
+    v4 = const.unit
+    return
+}

@@ -1,4 +1,4 @@
-use crate::analysis::{Analysis, Type, TypeId};
+use crate::analysis::{Analysis, DefId, Symbol, Type, TypeId};
 use crate::parser::Span;
 use crate::ast;
 use artezia_diag::{Diagnostic, Severity};
@@ -44,6 +44,17 @@ pub fn typecheck(
         }
     }
 
+    let struct_defs: Vec<DefId> = c.a.struct_infos.keys().copied().collect();
+    for def in struct_defs {
+        let n = c.a.struct_infos[&def].fields.len();
+
+        for i in 0 .. n {
+            let syn = c.a.struct_infos[&def].fields[i].syntactic_ty.clone();
+            let ty = c.lower_type(&syn);
+            c.a.struct_infos.get_mut(&def).unwrap().fields[i].ty = Some(ty);
+        }
+    }
+
     for item in &file.items {
         if let ast::Item::Func(f) = item {
             let ret = f.ret.as_ref().map_or(c.a.prims.unit, |t| c.lower_type(t));
@@ -52,7 +63,6 @@ pub fn typecheck(
             c.in_loop = false;
             c.check_block(&f.body);
 
-            // NEW — the return-completeness check:
             if ret != c.a.prims.unit && !block_always_returns(&f.body) {
                 c.error(
                     f.name_span.clone(),
@@ -199,6 +209,7 @@ impl Checker<'_> {
 
     fn lower_type(&mut self, t: &ast::Type) -> TypeId {
         let ast::Type::Named { path, span, .. } = t;
+
         if path.len() == 1 {
             match &self.src[path[0].clone()] {
                 "Int" => return self.a.prims.int,
@@ -210,7 +221,13 @@ impl Checker<'_> {
                 "Unit" => return self.a.prims.unit,
                 _ => {}
             }
+
+            let sym = self.a.symbols.intern(&self.src[path[0].clone()]);
+            if let Some(&def) = self.a.struct_names.get(&sym) {
+                return self.a.type_table.intern(Type::Struct(def));
+            }
         }
+
         let name = &self.src[span.clone()];
         self.error(span.clone(), format!("unknown type `{name}`"));
         self.a.prims.error
@@ -423,10 +440,81 @@ impl Checker<'_> {
 
             ast::Expr::Block(b) => self.check_block(b),
 
-            ast::Expr::Field { span, .. } => {
-                self.error(span.clone(), "field access is not supported yet".to_string());
-                p.error
+            ast::Expr::StructLit { id, type_span, fields, .. } => {
+                let sym = self.a.symbols.intern(&self.src[type_span.clone()]);
+
+                match self.a.struct_names.get(&sym).copied() {
+                    Some(def) => {
+                        for fi in fields {
+                            let val_ty = self.check_expr(&fi.value);
+                            let fname = self.a.symbols.intern(&self.src[fi.name_span.clone()]);
+                            let field_ty = self.a.struct_infos[&def].fields.iter()
+                                .find(|f| f.name == fname)
+                                .and_then(|f| f.ty);
+
+                            match field_ty {
+                                Some(fty) => self.expect_type(val_ty, fty, fi.value.span()),
+                                None => self.error(fi.name_span.clone(), format!("no field `{}` on this struct", &self.src[fi.name_span.clone()])),
+                            }
+                        }
+
+                        // Record reordering for each declared field (in order), find which literal init provides it's index in `fields`
+                        let decl_names: Vec<Symbol> = self.a.struct_infos[&def].fields.iter().map(|f| f.name).collect();
+                        let mut order = Vec::with_capacity(decl_names.len());
+
+                        for dname in decl_names {
+                            let lit_idx = fields.iter().position(|fi| {
+                                self.a.symbols.intern(&self.src[fi.name_span.clone()]) == dname
+                            }).unwrap_or(0); // typecheck already errored on missing fields
+
+                            order.push(lit_idx);
+                        }
+
+                        self.a.structlit_order.insert(*id, order);
+                        self.a.type_table.intern(Type::Struct(def))
+                    }
+
+                    None => {
+                        self.error(type_span.clone(), format!("unknown struct `{}`", &self.src[type_span.clone()]));
+                        p.error
+                    }
+                }
             }
+
+            ast::Expr::Field { id, obj, name_span, span, .. } => {
+                let obj_ty = self.check_expr(obj);
+
+                match self.a.type_table.get(obj_ty) {
+                    Type::Struct(def) => {
+                        let def = *def; // Copy out of the borrow
+                        let fname = self.a.symbols.intern(&self.src[name_span.clone()]);
+                        let found = self.a.struct_infos[&def].fields.iter().position(|f| f.name == fname);
+
+                        match found {
+                            Some(idx) => {
+                                self.a.field_indices.insert(*id, idx as u32);
+                                self.a.struct_infos[&def].fields[idx].ty.unwrap_or(p.error)
+                            }
+
+                            None => {
+                                self.error(
+                                    name_span.clone(),
+                                    format!("no field `{}` on this struct", &self.src[name_span.clone()])
+                                );
+                                p.error
+                            }
+                        }
+                    }
+
+                    Type::Error => p.error, // Poison in -> poison out, silent
+
+                    _ => {
+                        self.error(span.clone(), "field access on a non-struct type".to_string());
+                        p.error
+                    }
+                }
+            }
+
             ast::Expr::Index { span, .. } => {
                 self.error(span.clone(), "indexing is not supported yet".to_string());
                 p.error

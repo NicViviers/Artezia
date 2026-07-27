@@ -1,55 +1,52 @@
 ---
 source: crates/arteziac/tests/parser.rs
-expression: "check(\"func f() { let d = ''; }\")"
+expression: "check(\"func main() { while c { } }\")"
 ---
 File {
     items: [
         Func(
             Func {
                 id: NodeId(
-                    3,
+                    4,
                 ),
-                name_span: 5..6,
+                name_span: 5..9,
                 receiver_type_span: None,
                 receiver: None,
                 params: [],
                 ret: None,
                 body: Block {
                     id: NodeId(
-                        2,
+                        3,
                     ),
                     stmts: [
-                        Let {
+                        While {
                             id: NodeId(
-                                1,
+                                2,
                             ),
-                            name_span: 15..16,
-                            ty: None,
-                            init: Error {
+                            cond: Var {
                                 id: NodeId(
                                     0,
                                 ),
-                                span: 19..21,
+                                span: 20..21,
                             },
-                            span: 11..21,
+                            body: Block {
+                                id: NodeId(
+                                    1,
+                                ),
+                                stmts: [],
+                                tail: None,
+                                span: 22..25,
+                            },
+                            span: 14..25,
                         },
                     ],
                     tail: None,
-                    span: 9..24,
+                    span: 12..27,
                 },
-                span: 0..24,
+                span: 0..27,
             },
         ),
     ],
 }
 --- diagnostics ---
-[
-    Diagnostic {
-        severity: Error,
-        span: 19..21,
-        message: "empty character literal (a char must contain exactly one character)",
-        label: None,
-        notes: [],
-        code: None,
-    },
-]
+[]

@@ -384,6 +384,25 @@ impl<'a> Lowerer<'a> {
                 }, ty, e.id())
             }
 
+            ast::Expr::StructLit { id, fields, .. } => {
+                let def = self.a.defs[id];
+                let order = self.a.structlit_order[id].clone();
+                let field_vals: Vec<ValueId> = order.iter()
+                    .map(|&lit_idx| self.lower_expr(&fields[lit_idx].value))
+                    .collect();
+
+                self.emit(InstrKind::StructNew {
+                    def,
+                    fields: field_vals
+                }, ty, origin)
+            }
+
+            ast::Expr::Field { id, obj, .. } => {
+                let base = self.lower_expr(obj);
+                let index = self.a.field_indices[id];
+                self.emit(InstrKind::FieldGet { base, index }, ty, origin)
+            }
+
             _ => todo!("lower_expr: {e:?}")
         }
     }

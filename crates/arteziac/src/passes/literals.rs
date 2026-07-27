@@ -117,6 +117,12 @@ impl Decoder<'_> {
                 }
             }
 
+            ast::Expr::StructLit { fields, .. } => {
+                for fi in fields {
+                    self.walk_expr(&fi.value);
+                }
+            }
+
             ast::Expr::Var { .. } | ast::Expr::Error { .. } => {}
         }
     }

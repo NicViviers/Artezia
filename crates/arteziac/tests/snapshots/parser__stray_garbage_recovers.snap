@@ -10,6 +10,8 @@ File {
                     3,
                 ),
                 name_span: 5..6,
+                receiver_type_span: None,
+                receiver: None,
                 params: [],
                 ret: None,
                 body: Block {

@@ -25,9 +25,13 @@ fn cg_const_return() {
     insta::assert_snapshot!(check("func answer() -> Int { return 42; }"));
 }
 
+#[test]
+fn cg_struct() {
+    insta::assert_snapshot!(check("struct Foo { bar: Int } func main() -> Int { let f = Foo { bar: 5 }; return f.bar; }"));
+}
+
 // Test order -- simplest outward, same as lowering:
 
-// func answer() -> Int { return 42; } - const + return. The "hello world" of codegen; if this verifies and the .ll looks right, your whole pipeline (declare, entry block, emit, terminate, verify) works.
 // arithmetic - 1 + 2 * 3 - the Binary arms
 // locals - let x = 1; return x; - allocas, load, store
 // params - func add(a, b) { return a + b; } - param stores

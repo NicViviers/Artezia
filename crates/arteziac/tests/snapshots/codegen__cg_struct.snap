@@ -1,0 +1,15 @@
+---
+source: crates/arteziac/tests/codegen.rs
+expression: "check(\"struct Foo { bar: Int } func main() -> Int { let f = Foo { bar: 5 }; return f.bar; }\")"
+---
+; ModuleID = 'artezia'
+source_filename = "artezia"
+
+define i64 @main() {
+bb0:
+  %f = alloca { i64 }, align 8
+  store { i64 } { i64 5 }, ptr %f, align 4
+  %load = load { i64 }, ptr %f, align 4
+  %field = extractvalue { i64 } %load, 0
+  ret i64 %field
+}

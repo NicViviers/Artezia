@@ -124,7 +124,17 @@ pub enum InstrKind {
         dur: ValueId
     },
 
-    WithinExit
+    WithinExit,
+
+    StructNew {
+        def: DefId,
+        fields: Vec<ValueId>
+    },
+
+    FieldGet {
+        base: ValueId,
+        index: u32
+    }
 }
 
 impl InstrKind {
@@ -141,7 +151,9 @@ impl InstrKind {
             Call { args, .. } => args.clone(),
             ScopeEnter | ScopeExit | WithinExit => Vec::new(),
             Spawn { args, .. } => args.clone(),
-            WithinEnter { dur } => vec![*dur]
+            WithinEnter { dur } => vec![*dur],
+            StructNew { fields, .. } => fields.clone(),
+            FieldGet { base, .. } => vec![*base]
         }
     }
 }
@@ -273,6 +285,15 @@ fn fmt_instr(k: &InstrKind, a: &Analysis) -> String {
 
         WithinEnter { dur } => format!("within.enter v{}", dur.0),
         WithinExit => "within.exit".to_string(),
+
+        StructNew { def, fields } => {
+            let args = fields.iter().map(|v| format!("v{}", v.0)).collect::<Vec<_>>().join(", ");
+            format!("struct.new #{} ({})", def.0, args)
+        }
+
+        FieldGet { base, index } => {
+            format!("field.get v{}.{}", base.0, index)
+        }
     }
 }
  

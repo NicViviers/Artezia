@@ -15,8 +15,9 @@ pub struct File {
 #[derive(Debug, PartialEq)]
 pub enum Item {
     Func(Func),
-    Import(Import)
-    // v-next: Struct(Struct), Enum(Enum), Impl(Impl), TypeAlias(TypeAlias)
+    Import(Import),
+    Struct(StructDef),
+    // v-next:  Enum(Enum), TypeAlias(TypeAlias)
 }
 
 #[derive(Debug, PartialEq)]
@@ -28,21 +29,54 @@ pub struct Import {
 }
 
 #[derive(Debug, PartialEq)]
+pub struct StructDef {
+    pub id: NodeId,
+    pub name_span: Span,
+    pub fields: Vec<FieldDef>,
+    pub span: Span
+}
+
+#[derive(Debug, PartialEq)]
+pub struct FieldDef {
+    pub id: NodeId,
+    pub name_span: Span,
+    pub ty: Type,
+    pub span: Span
+}
+
+#[derive(Debug, PartialEq)]
+pub struct FieldInit {
+    pub id: NodeId,
+    pub name_span: Span, // "bar"
+    pub value: Box<Expr>,
+    pub span: Span
+}
+
+#[derive(Debug, PartialEq)]
 pub struct Func {
     pub id: NodeId,
-    pub name_span: Span,          // the identifier's span; name interned later
+    pub name_span: Span, // the identifier's span; name interned later
+    pub receiver_type_span: Option<Span>, // Some("Foo") for `Foo.new`, None for plain functions
+    pub receiver: Receiver,
     pub params: Vec<Param>,
-    pub ret: Option<Type>,        // None = Unit
+    pub ret: Option<Type>, // None = Unit
     pub body: Block,
-    pub span: Span,               // `func` keyword through closing `}`
+    pub span: Span, // `func` keyword through closing `}`
+}
+
+#[derive(Debug, PartialEq)]
+pub enum Receiver {
+    None,
+    ByValue,
+    MutSelf
 }
 
 #[derive(Debug, PartialEq)]
 pub struct Param {
-    pub id: NodeId,               // params are DEFINITIONS -> they need ids
-                                  // (resolution creates a DefId per param)
+    pub id: NodeId, // params are DEFINITIONS -> they need ids
+                    // (resolution creates a DefId per param)
     pub name_span: Span,
-    pub ty: Type,                 // mandatory on params (per language ref)
+    pub ty: Type, // mandatory on params (per language ref)
     pub span: Span,
 }
 
@@ -51,11 +85,10 @@ pub struct Param {
 // this is what the user WROTE, the checker computes what it MEANS)
 // ============================================================================
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     /// `Int`, `std::collections::HashMap` - a (possibly dotted) path.
     Named { id: NodeId, path: Vec<Span>, span: Span },
-    // v-next:
     // Optional { id, inner: Box<Type>, span },          // T?
     // List     { id, elem: Box<Type>, span },           // [T]
     // Func     { id, params: Vec<Type>, ret: Option<Box<Type>>, span },
@@ -179,6 +212,13 @@ pub enum Expr {
         span: Span,
     },
 
+    StructLit {
+        id: NodeId,
+        type_span: Span, // "Foo"
+        fields: Vec<FieldInit>,
+        span: Span
+    },
+
     // ---- control flow (expressions in Artezia) ----
     If {
         id: NodeId,
@@ -241,7 +281,7 @@ impl Expr {
             Int { id, .. } | Float { id, .. } | Str { id, .. } | Char { id, .. } | Duration { id, .. }
             | Bool { id, .. } | Var { id, .. } | Unary { id, .. } | Binary { id, .. } | Assign { id, .. }
             | Call { id, .. } | Field { id, .. } | Index { id, .. } | Range { id, .. } | If { id, .. }
-            | Spawn { id, .. } | Within { id, .. } | Error { id, .. } => *id,
+            | Spawn { id, .. } | Within { id, .. } | Error { id, .. } | StructLit { id, .. } => *id,
             Block(b) => b.id,
         }
     }
@@ -253,7 +293,7 @@ impl Expr {
             Int { span, .. } | Float { span, .. } | Str { span, .. } | Char { span, .. }
             | Duration { span, .. } | Bool { span, .. } | Var { span, .. } | Unary { span, .. }
             | Binary { span, .. } | Assign { span, .. } | Call { span, .. } | Field { span, .. }
-            | Index { span, .. } | Range { span, .. } | If { span, .. }
+            | Index { span, .. } | Range { span, .. } | If { span, .. } | StructLit { span, .. }
             | Spawn { span, .. } | Within { span, .. } | Error { span, .. } => span.clone(),
             Block(b) => b.span.clone(),
         }

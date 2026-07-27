@@ -88,6 +88,15 @@ pub enum Token {
 
     #[token("is", priority = 6)]
     Is,
+
+    #[token("struct")]
+    Struct,
+
+    #[token("self")]
+    Self_,
+
+    #[token("mut")]
+    Mut,
     // TODO: Implement async, await, yield, const, static, unsafe, where, comptime
 
 
@@ -254,6 +263,9 @@ impl Token {
             Token::Not => "`not`",
             Token::As => "`as`",
             Token::Is => "`is`",
+            Token::Struct => "`struct`",
+            Token::Self_ => "`self`",
+            Token::Mut => "`mut`",
             Token::Int => "an integer",
             Token::Float => "a float",
             Token::Char => "a character",

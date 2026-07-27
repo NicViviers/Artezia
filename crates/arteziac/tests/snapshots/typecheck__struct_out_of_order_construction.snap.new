@@ -1,0 +1,6 @@
+---
+source: crates/arteziac/tests/typecheck.rs
+assertion_line: 50
+expression: "check(\"struct P { x: Int, y: Bool } func main() { let p = P { y: true, x: 1 }; }\")"
+---
+no diagnostics

@@ -20,6 +20,7 @@ pub struct Parser {
     pos: usize,
     next_id: u32,
     diags: Vec<Diagnostic>,
+    no_struct_literal: bool,
     eof_span: Span // src.len() .. src.len(), passed in at construction
 }
 
@@ -29,6 +30,7 @@ impl Parser {
             pos: 0,
             next_id: 0,
             diags: Vec::new(),
+            no_struct_literal: false,
             eof_span: tokens.len() .. tokens.len(),
             tokens
         }
@@ -83,7 +85,13 @@ impl Parser {
 
     fn parse_if(&mut self) -> Option<ast::Expr> {
         let start = self.advance(); // `if`
+
+        // Condition coming - struct literals forbidden here
+        let prev = self.no_struct_literal;
+        self.no_struct_literal = true;
         let cond = self.parse_expr(0)?;
+        self.no_struct_literal = prev;
+
         let then = self.parse_block()?;
         let els = if self.eat(Token::Else).is_some() {
             Some(Box::new(if self.cur().0 == Token::If {
@@ -128,8 +136,13 @@ impl Parser {
             }
 
             Token::Ident => {
-                self.advance();
-                Some(ast::Expr::Var { id: self.mk_id(), span })
+                let name_span = self.advance();
+
+                if matches!(self.cur().0, Token::LBrace) && !self.no_struct_literal {
+                    return self.parse_struct_literal(name_span);
+                }
+
+                Some(ast::Expr::Var { id: self.mk_id(), span: name_span })
             }
 
             Token::Bool => {
@@ -223,6 +236,39 @@ impl Parser {
                 Some(ast::Expr::Error { id: self.mk_id(), span })
             }
         }
+    }
+
+    fn parse_struct_literal(&mut self, type_span: Span) -> Option<ast::Expr> {
+        let start = type_span.clone();
+        self.expect(Token::LBrace, "a struct literal body");
+        let mut fields = Vec::new();
+
+        while !matches!(self.cur().0, Token::RBrace | Token::EOF) {
+            let before = self.pos;
+            let name_span = self.expect(Token::Ident, "a field name");
+            self.expect(Token::Colon, "a field value");
+            let value = self.parse_expr(0)?;
+            let span = join(&name_span, &value.span());
+            
+            fields.push(ast::FieldInit {
+                id: self.mk_id(),
+                name_span,
+                value: Box::new(value),
+                span
+            });
+
+            if self.eat(Token::Comma).is_none() { break; }
+
+            debug_assert!(self.pos > before, "no progress in struct literal at {:?}", self.cur());
+        }
+
+        let end = self.expect(Token::RBrace, "the end of a struct literal");
+        Some(ast::Expr::StructLit {
+            id: self.mk_id(),
+            type_span,
+            fields,
+            span: join(&start, &end)
+        })
     }
 
     fn infix_binding_power(tok: Token) -> Option<(InfixOp, u8, u8)> {
@@ -415,7 +461,13 @@ impl Parser {
 
             Token::While => {
                 let start = self.advance();
+                
+                // Condition - struct literals forbidden
+                let prev = self.no_struct_literal;
+                self.no_struct_literal = true;
                 let cond = self.parse_expr(0)?;
+                self.no_struct_literal = prev;
+
                 let body = self.parse_block()?;
                 let span = join(&start, &body.span);
                 Some(ast::Stmt::While {
@@ -430,7 +482,13 @@ impl Parser {
                 let start = self.advance();
                 let var_span = self.expect(Token::Ident, "a loop variable");
                 self.expect(Token::In, "`in`");
+
+                // Struct literal forbidden here
+                let prev = self.no_struct_literal;
+                self.no_struct_literal = true;
                 let iter = self.parse_expr(0)?;
+                self.no_struct_literal = prev;
+
                 let body = self.parse_block()?;
                 let span = join(&start, &body.span);
                 Some(ast::Stmt::For {
@@ -570,17 +628,47 @@ impl Parser {
 
     fn parse_func(&mut self) -> Option<ast::Func> {
         let start = self.advance(); // `func`
-        let name_span = self.expect(Token::Ident, "a function name");
+        let first = self.expect(Token::Ident, "a function name");
+
+        // Optional `.method` -> assosciated function
+        let (receiver_type_span, name_span) = if matches!(self.cur().0, Token::Dot) {
+            self.advance(); // `.`
+            let method = self.expect(Token::Ident, "a method name");
+            (Some(first), method)
+        } else {
+            (None, first)
+        };
+
         self.expect(Token::LParen, "a function's parameter list");
         let mut params = Vec::new();
 
+        // Handle possible receiver first (`self` or `mut self`)
+        let receiver = if matches!(self.cur().0, Token::Self_) {
+            self.advance();
+            ast::Receiver::ByValue
+        } else if matches!(self.cur().0, Token::Mut) && matches!(self.peek().0, Token::Self_) {
+            self.advance();
+            self.advance();
+            ast::Receiver::MutSelf
+        } else {
+            ast::Receiver::None
+        };
+
+        if !matches!(receiver, ast::Receiver::None) {
+            self.eat(Token::Comma); // Optional `self, x: Int`
+        }
+
         while !matches!(self.cur().0, Token::RParen | Token::EOF) {
+            let before = self.pos;
+
             let pname = self.expect(Token::Ident, "a parameter name");
             self.expect(Token::Colon, "a parameter's type annotation");
             let ty = self.parse_type()?;
-            let span = join(&name_span, &ty.span());
+            let span = join(&pname, &ty.span());
             params.push(ast::Param { id: self.mk_id(), name_span: pname, ty, span });
+
             if self.eat(Token::Comma).is_none() { break; }
+            debug_assert!(self.pos > before, "no progress in params at {:?}", self.cur());
         }
 
         self.expect(Token::RParen, "the end of the parameter list");
@@ -590,9 +678,39 @@ impl Parser {
         Some(ast::Func {
             id: self.mk_id(),
             name_span,
+            receiver_type_span,
+            receiver,
             params,
             ret,
             body,
+            span
+        })
+    }
+
+    fn parse_struct(&mut self) -> Option<ast::StructDef> {
+        let start = self.advance(); // `struct`
+        let name_span = self.expect(Token::Ident, "a struct name");
+        self.expect(Token::LBrace, "a struct's field definition");
+        let mut fields = Vec::new();
+
+        while !matches!(self.cur().0, Token::RBrace | Token::EOF) {
+            let before = self.pos;
+            let fname = self.expect(Token::Ident, "a field name");
+            self.expect(Token::Colon, "a field's type annotation");
+            let ty = self.parse_type()?;
+            let span = join(&fname, &ty.span());
+            fields.push(ast::FieldDef { id: self.mk_id(), name_span: fname, ty, span });
+
+            if self.eat(Token::Comma).is_none() { break; }
+            debug_assert!(self.pos > before, "no progress in struct fields at {:?}", self.cur());
+        }
+
+        let end_span = self.expect(Token::RBrace, "the end of a struct's fields");
+        let span = join(&start, &end_span);
+        Some(ast::StructDef {
+            id: self.mk_id(),
+            name_span,
+            fields,
             span
         })
     }
@@ -614,6 +732,7 @@ impl Parser {
         match self.cur().0 {
             Token::Func => self.parse_func().map(ast::Item::Func),
             Token::Import => self.parse_import(),
+            Token::Struct => self.parse_struct().map(ast::Item::Struct),
             other => {
                 self.diags.push(Diagnostic::new(
                     Severity::Error, self.cur().1,

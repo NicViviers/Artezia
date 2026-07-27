@@ -1,0 +1,6 @@
+---
+source: crates/arteziac/tests/typecheck.rs
+assertion_line: 41
+expression: "check(\"struct P { x: Int, y: Int } func main() -> Int { let p = P { x: 1, y: 2 }; return p.y; }\")"
+---
+no diagnostics

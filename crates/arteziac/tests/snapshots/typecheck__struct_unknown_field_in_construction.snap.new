@@ -1,0 +1,6 @@
+---
+source: crates/arteziac/tests/typecheck.rs
+assertion_line: 76
+expression: "check(\"struct Foo { bar: Int } func main() { let f = Foo { baz: 5 }; }\")"
+---
+52..55: no field `baz` on this struct

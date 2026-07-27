@@ -1,0 +1,110 @@
+---
+source: crates/arteziac/tests/parser.rs
+expression: "check(\"struct Foo { bar: Bool } func main() { while true { let x = Foo { bar: false }; } }\")"
+---
+File {
+    items: [
+        Struct(
+            StructDef {
+                id: NodeId(
+                    2,
+                ),
+                name_span: 7..10,
+                fields: [
+                    FieldDef {
+                        id: NodeId(
+                            1,
+                        ),
+                        name_span: 13..16,
+                        ty: Named {
+                            id: NodeId(
+                                0,
+                            ),
+                            path: [
+                                18..22,
+                            ],
+                            span: 18..22,
+                        },
+                        span: 13..22,
+                    },
+                ],
+                span: 0..24,
+            },
+        ),
+        Func(
+            Func {
+                id: NodeId(
+                    11,
+                ),
+                name_span: 30..34,
+                receiver_type_span: None,
+                receiver: None,
+                params: [],
+                ret: None,
+                body: Block {
+                    id: NodeId(
+                        10,
+                    ),
+                    stmts: [
+                        While {
+                            id: NodeId(
+                                9,
+                            ),
+                            cond: Bool {
+                                id: NodeId(
+                                    3,
+                                ),
+                                span: 45..49,
+                            },
+                            body: Block {
+                                id: NodeId(
+                                    8,
+                                ),
+                                stmts: [
+                                    Let {
+                                        id: NodeId(
+                                            7,
+                                        ),
+                                        name_span: 56..57,
+                                        ty: None,
+                                        init: StructLit {
+                                            id: NodeId(
+                                                6,
+                                            ),
+                                            type_span: 60..63,
+                                            fields: [
+                                                FieldInit {
+                                                    id: NodeId(
+                                                        5,
+                                                    ),
+                                                    name_span: 66..69,
+                                                    value: Bool {
+                                                        id: NodeId(
+                                                            4,
+                                                        ),
+                                                        span: 71..76,
+                                                    },
+                                                    span: 66..76,
+                                                },
+                                            ],
+                                            span: 60..78,
+                                        },
+                                        span: 52..78,
+                                    },
+                                ],
+                                tail: None,
+                                span: 50..81,
+                            },
+                            span: 39..81,
+                        },
+                    ],
+                    tail: None,
+                    span: 37..83,
+                },
+                span: 25..83,
+            },
+        ),
+    ],
+}
+--- diagnostics ---
+[]

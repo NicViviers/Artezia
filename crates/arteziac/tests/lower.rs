@@ -228,3 +228,31 @@ fn for_containing_while() {
         "func main(d: Bool) { for i in 0 .. 10 { while d { break; } } }"
     ));
 }
+
+#[test]
+fn struct_new() {
+    insta::assert_snapshot!(check(
+        "struct Foo { bar: Bool }"
+    ));
+}
+
+#[test]
+fn struct_out_of_order_lit() {
+    insta::assert_snapshot!(check(
+        "struct Foo { b: Int, a: Int }" // Should preserve order
+    ));
+}
+
+#[test]
+fn struct_field_access() {
+    insta::assert_snapshot!(check(
+        "struct Foo { bar: Bool } func main() -> Bool { let x = Foo { bar: true }; return x.bar; }"
+    ))
+}
+
+#[test]
+fn struct_nested_field_access() {
+    insta::assert_snapshot!(check(
+        "struct Inner { foo: Bool } struct Outer { bar: Inner } func main() { let inner = Inner { foo: true }; let outer = Outer { bar: inner }; }"
+    ))
+}

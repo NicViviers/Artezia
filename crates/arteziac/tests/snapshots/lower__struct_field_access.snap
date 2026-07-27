@@ -1,0 +1,14 @@
+---
+source: crates/arteziac/tests/lower.rs
+expression: "check(\"struct Foo { bar: Bool } func main() -> Bool { let x = Foo { bar: true }; return x.bar; }\")"
+---
+func main() -> Bool {
+  local %0: struct#0 (x)
+  bb0:
+    v0 = const.bool true
+    v1 = struct.new #0 (v0)
+    store %0, v1
+    v2 = load %0
+    v3 = field.get v2.0
+    return v3
+}

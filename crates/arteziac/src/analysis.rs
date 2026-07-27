@@ -14,7 +14,7 @@
 use std::collections::HashMap;
 use artezia_diag::Diagnostic;
 use crate::parser::Span;
-use crate::ast::NodeId;
+use crate::ast::{self, NodeId};
 
 /// An interned string. `Symbol(5)` means "the spelling that was interned 5th"
 /// - e.g. the name "x". IMPORTANT: a Symbol is a spelling, not a variable.
@@ -58,11 +58,12 @@ pub struct DefId(pub u32);
 /// you can't assign to a function; codegen emits params, locals and funcs completely differently
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DefKind {
-    Func,     // `func add(...)`
-    Param,    // `a` in `func add(a: Int)`
-    Local,    // `let x = ...` and `for x in ...` loop variables
-    Import,   // v0: the name an `import` introduces
-    // TODO: Struct, Field, EnumVariant, TypeAlias, ...
+    Func, // `func add(...)`
+    Param, // `a` in `func add(a: Int)`
+    Local, // `let x = ...` and `for x in ...` loop variables
+    Import, // The name an `import` introduces
+    Struct, // `struct { foo: Bar, ... }`
+    // TODO: Field, EnumVariant, TypeAlias, ...
 }
 
 /// Everything known about a definition. One record per DefId, stored in definitions below
@@ -120,9 +121,10 @@ pub enum Type {
     Range,
     Unit,
     Func { params: Vec<TypeId>, ret: TypeId },
+    Struct(DefId),
     /// When an expression can't be typed it gets Error, and every rule accepts Error silently: Error + Int = Error, NO new diagnostic
     Error,
-    // TODO: Struct(DefId), List(TypeId), Optional(TypeId), Range, ...
+    // TODO: List(TypeId), Optional(TypeId), Range, ...
 }
 
 /// The type catalog: interning table like the Interner, for types
@@ -164,6 +166,8 @@ impl TypeTable {
                     params.iter().map(|p| self.display(*p)).collect();
                 format!("func({}) -> {}", ps.join(", "), self.display(*ret))
             }
+
+            Type::Struct(def) => format!("struct#{}", def.0)
         }
     }
 }
@@ -198,6 +202,18 @@ pub enum LitValue {
     Bool(bool),
 }
 
+#[derive(Debug, Clone)]
+pub struct StructInfo {
+    pub fields: Vec<FieldInfo>
+}
+
+#[derive(Debug, Clone)]
+pub struct FieldInfo {
+    pub name: Symbol,
+    pub syntactic_ty: ast::Type,
+    pub ty: Option<TypeId>
+}
+
 /// The output of the analysis stage alongside the AST
 /// It is the input to lowering and codegen. Two kinds of content:
 ///
@@ -230,6 +246,16 @@ pub struct Analysis {
 
     /// Definition -> its type (a Local's inferred type, a Func's signature)
     pub def_types: HashMap<DefId, TypeId>,
+
+    /// Struct fields
+    pub struct_infos: HashMap<DefId, StructInfo>,
+
+    /// Struct names
+    pub struct_names: HashMap<Symbol, DefId>,
+
+    /// Intermediates for structs
+    pub field_indices: HashMap<NodeId, u32>, // Field node -> field's index
+    pub structlit_order: HashMap<NodeId, Vec<usize>> // StructLit node -> [decl-pos -> literal index]
 }
 
 impl Analysis {
@@ -246,6 +272,7 @@ impl Analysis {
             unit: type_table.intern(Type::Unit),
             error: type_table.intern(Type::Error),
         };
+
         Analysis {
             symbols: Interner::default(),
             definitions: Definitions::default(),
@@ -255,6 +282,10 @@ impl Analysis {
             values: HashMap::new(),
             types: HashMap::new(),
             def_types: HashMap::new(),
+            struct_infos: HashMap::new(),
+            struct_names: HashMap::new(),
+            field_indices: HashMap::new(),
+            structlit_order: HashMap::new()
         }
     }
 }

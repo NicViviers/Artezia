@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use artezia_diag::{Diagnostic, Severity};
-use crate::{analysis::{Analysis, DefId, DefInfo, DefKind, Symbol}, parser::Span};
+use crate::{analysis::{Analysis, DefId, DefInfo, DefKind, FieldInfo, StructInfo, Symbol}, parser::Span};
 use crate::ast;
 
 struct Resolver<'a> {
@@ -34,8 +34,11 @@ impl Resolver<'_> {
         }
 
         let sym = self.intern_span(name_span);
+        self.declare_sym(sym, name_span, kind, node)
+    }
 
-        // Duplicate in the same scope? (Shadowing an outer scope is fine since that's just lookup finding a nearer entry)
+    fn declare_sym(&mut self, sym: Symbol, name_span: &Span, kind: DefKind, node: ast::NodeId) -> Option<DefId> {
+        // Duplicate in the same scope?
         if let Some(&prev) = self.scopes.last().unwrap().get(&sym) {
             let first = self.a.definitions.info(prev).name_span.clone();
 
@@ -109,7 +112,37 @@ impl Resolver<'_> {
             }
 
             ast::Expr::Call { callee, args, .. } => {
-                self.resolve_expr(callee);
+                let mut handled = false;
+
+                if let ast::Expr::Field { obj, name_span, id: field_id , .. } = &**callee {
+                    if let ast::Expr::Var { span: base_span, .. } = &**obj {
+                        let base_sym = self.intern_span(base_span);
+
+                        if let Some(def) = self.lookup(base_sym) {
+                            if self.a.definitions.info(def).kind == DefKind::Struct {
+                                // Associated call
+                                let mangled = format!("{}${}", &self.src[base_span.clone()], &self.src[name_span.clone()]);
+                                let msym = self.a.symbols.intern(&mangled);
+
+                                if let Some(fdef) = self.lookup(msym) {
+                                    self.a.defs.insert(*field_id, fdef);
+                                } else {
+                                    self.diags.push(Diagnostic::new(
+                                        Severity::Error,
+                                        name_span.clone(),
+                                        "no such associated function".to_string()
+                                    ));
+                                }
+
+                                handled = true;
+                            }
+                        }
+                    }
+                }
+
+                if !handled {
+                    self.resolve_expr(callee);
+                }
 
                 for arg in args {
                     self.resolve_expr(&arg.value);
@@ -143,6 +176,26 @@ impl Resolver<'_> {
                 
                 if let Some(b) = els {
                     self.resolve_block(b);
+                }
+            }
+
+            ast::Expr::StructLit { id, type_span, fields, .. } => {
+                let sym = self.a.symbols.intern(&self.src[type_span.clone()]);
+
+                match self.a.struct_names.get(&sym) {
+                    Some(&def) => {
+                        self.a.defs.insert(*id, def);
+                    }
+
+                    None => self.diags.push(Diagnostic::new(
+                        Severity::Error,
+                        type_span.clone(),
+                        format!("unknown struct `{}`", &self.src[type_span.clone()])
+                    ))
+                }
+
+                for fi in fields {
+                    self.resolve_expr(&fi.value);
                 }
             }
 
@@ -209,8 +262,14 @@ pub fn resolve(file: &ast::File, src: &str, a: &mut Analysis, diags: &mut Vec<Di
     // Declare every item name but walk no bodies
     for item in &file.items {
         match item {
-            ast::Item::Func(f) => {
-                r.declare(&f.name_span, DefKind::Func, f.id);
+            ast::Item::Func(f) => match &f.receiver_type_span {
+                Some(type_span) => {
+                    let mangled = format!("{}${}", &r.src[type_span.clone()], &r.src[f.name_span.clone()]);
+                    let sym = r.a.symbols.intern(&mangled);
+                    r.declare_sym(sym, &f.name_span, DefKind::Func, f.id);
+                }
+
+                None => { r.declare(&f.name_span, DefKind::Func, f.id); }
             }
 
             ast::Item::Import(imp) => {
@@ -218,6 +277,21 @@ pub fn resolve(file: &ast::File, src: &str, a: &mut Analysis, diags: &mut Vec<Di
                 if let Some(last) = imp.path.last() {
                     r.declare(last, DefKind::Import, imp.id);
                 }
+            }
+
+            ast::Item::Struct(strct) => {
+                let Some(def) = r.declare(&strct.name_span, DefKind::Struct, strct.id) else { continue };
+
+                let name_sym = r.a.symbols.intern(&r.src[strct.name_span.clone()]);
+                r.a.struct_names.insert(name_sym, def);
+
+                let fields = strct.fields.iter().map(|f| FieldInfo {
+                    name: r.intern_span(&f.name_span),
+                    syntactic_ty: f.ty.clone(),
+                    ty: None
+                }).collect();
+
+                r.a.struct_infos.insert(def, StructInfo { fields });
             }
         }
     }

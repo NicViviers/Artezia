@@ -1,0 +1,137 @@
+---
+source: crates/arteziac/tests/parser.rs
+expression: "check(\"struct Multi { lhs: Int, rhs: Int } struct Trailing { foo: Bool,, } struct Empty {  }\")"
+---
+File {
+    items: [
+        Struct(
+            StructDef {
+                id: NodeId(
+                    4,
+                ),
+                name_span: 7..12,
+                fields: [
+                    FieldDef {
+                        id: NodeId(
+                            1,
+                        ),
+                        name_span: 15..18,
+                        ty: Named {
+                            id: NodeId(
+                                0,
+                            ),
+                            path: [
+                                20..23,
+                            ],
+                            span: 20..23,
+                        },
+                        span: 15..23,
+                    },
+                    FieldDef {
+                        id: NodeId(
+                            3,
+                        ),
+                        name_span: 25..28,
+                        ty: Named {
+                            id: NodeId(
+                                2,
+                            ),
+                            path: [
+                                30..33,
+                            ],
+                            span: 30..33,
+                        },
+                        span: 25..33,
+                    },
+                ],
+                span: 0..35,
+            },
+        ),
+        Struct(
+            StructDef {
+                id: NodeId(
+                    9,
+                ),
+                name_span: 43..51,
+                fields: [
+                    FieldDef {
+                        id: NodeId(
+                            6,
+                        ),
+                        name_span: 54..57,
+                        ty: Named {
+                            id: NodeId(
+                                5,
+                            ),
+                            path: [
+                                59..63,
+                            ],
+                            span: 59..63,
+                        },
+                        span: 54..63,
+                    },
+                    FieldDef {
+                        id: NodeId(
+                            8,
+                        ),
+                        name_span: 64..64,
+                        ty: Named {
+                            id: NodeId(
+                                7,
+                            ),
+                            path: [
+                                64..64,
+                            ],
+                            span: 64..64,
+                        },
+                        span: 64..64,
+                    },
+                ],
+                span: 36..67,
+            },
+        ),
+        Struct(
+            StructDef {
+                id: NodeId(
+                    10,
+                ),
+                name_span: 75..80,
+                fields: [],
+                span: 68..85,
+            },
+        ),
+    ],
+}
+--- diagnostics ---
+[
+    Diagnostic {
+        severity: Error,
+        span: 64..64,
+        message: "expected an identifier, found `,`",
+        label: None,
+        notes: [
+            "while parsing a field name",
+        ],
+        code: None,
+    },
+    Diagnostic {
+        severity: Error,
+        span: 64..64,
+        message: "expected `:`, found `,`",
+        label: None,
+        notes: [
+            "while parsing a field's type annotation",
+        ],
+        code: None,
+    },
+    Diagnostic {
+        severity: Error,
+        span: 64..64,
+        message: "expected an identifier, found `,`",
+        label: None,
+        notes: [
+            "while parsing a type name",
+        ],
+        code: None,
+    },
+]

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use crate::{analysis::{Analysis, DefId, Type, TypeId}, tir::{self, BinOp, InstrKind::*, Terminator, UnOp}};
 use inkwell::{
-    IntPredicate, basic_block::BasicBlock, builder::Builder, context::Context, module::Module, types::{BasicType, BasicTypeEnum}, values::{BasicValueEnum, FunctionValue, PointerValue}
+    IntPredicate, basic_block::BasicBlock, builder::Builder, context::Context, module::Module, types::{BasicType, BasicTypeEnum, StructType}, values::{BasicValueEnum, FunctionValue, PointerValue}
 };
 
 pub struct Codegen<'ctx> {
@@ -61,9 +61,28 @@ impl<'ctx> Codegen<'ctx> {
             Type::Float => self.ctx.f64_type().into(),
             Type::Char => self.ctx.i32_type().into(),
             Type::Unit => self.ctx.i64_type().into(), // Just for representation because `void` isn't a real value
+            Type::Struct(def) => {
+                let field_types: Vec<BasicTypeEnum> = self.a.struct_infos[def]
+                    .fields
+                    .iter()
+                    .map(|f| self.llvm_type(f.ty.expect("struct field type unresolved")))
+                    .collect();
+
+                self.ctx.struct_type(&field_types, false).into()
+            }
             // TODO: Implement Range, Str, Duration, Func later
             _ => todo!("llvm_type: {ty:?}")
         }
+    }
+
+    fn struct_llvm_type(&self, def: DefId) -> StructType<'ctx> {
+        let field_types: Vec<BasicTypeEnum> = self.a.struct_infos[&def]
+            .fields
+            .iter()
+            .map(|f| self.llvm_type(f.ty.expect("unresolved field type")))
+            .collect();
+
+        self.ctx.struct_type(&field_types, false)
     }
 
     fn emit_function(&mut self, f: &tir::Function) {
@@ -192,6 +211,30 @@ impl<'ctx> Codegen<'ctx> {
 
             WithinEnter { .. } | WithinExit => {
                 todo!("within codegen requires artezia_rt (not yet built)")
+            }
+
+            StructNew { def, fields } => {
+                let sty = self.struct_llvm_type(*def);
+                let mut agg = sty.get_undef();
+
+                for (i, fv) in fields.iter().enumerate() {
+                    let val = self.values[fv];
+                    agg = self.builder
+                        .build_insert_value(agg, val, i as u32, "field")
+                        .unwrap()
+                        .into_struct_value();
+                }
+
+                Some(agg.into())
+            }
+
+            FieldGet { base, index } => {
+                let agg = self.values[base].into_struct_value();
+                let field = self.builder
+                    .build_extract_value(agg, *index, "field")
+                    .unwrap();
+
+                Some(field)
             }
         };
 
