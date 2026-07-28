@@ -1,0 +1,5 @@
+---
+source: crates/arteziac/tests/typecheck.rs
+expression: "check(\"func plain(self) -> Int { return 0; }\")"
+---
+5..10: `self` is only valid in a method (`func Type.name(self)`)

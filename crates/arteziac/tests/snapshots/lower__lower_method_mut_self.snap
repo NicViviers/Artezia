@@ -1,0 +1,19 @@
+---
+source: crates/arteziac/tests/lower.rs
+expression: "check(\"struct C { n: Int } func C.inc(mut self) { self.n = self.n + 1; }\")"
+---
+func C$inc(%0) -> Unit {
+  local %0: ptr -> struct#0 (self)
+  bb0:
+    v0 = load %0
+    v1 = field.ptr v0.0 (#0)
+    v2 = load.ptr v1
+    v3 = const.int 1
+    v4 = add v2, v3
+    v5 = load %0
+    v6 = field.ptr v5.0 (#0)
+    store.ptr v6, v4
+    v7 = const.unit
+    v8 = const.unit
+    return
+}

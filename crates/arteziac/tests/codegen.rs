@@ -30,22 +30,35 @@ fn cg_struct() {
     insta::assert_snapshot!(check("struct Foo { bar: Int } func main() -> Int { let f = Foo { bar: 5 }; return f.bar; }"));
 }
 
-// Test order -- simplest outward, same as lowering:
+#[test]
+fn cg_struct_out_of_order() {
+    insta::assert_snapshot!(check(
+        "struct P { x: Int, y: Bool } func main() -> Int { let p = P { y: true, x: 1 }; return p.x; }"
+    ));
+}
 
-// arithmetic - 1 + 2 * 3 - the Binary arms
-// locals - let x = 1; return x; - allocas, load, store
-// params - func add(a, b) { return a + b; } - param stores
-// if-diamond - confirms two-pass block creation (branches to later blocks)
-// while/for - back-edges, the loop CFG in LLVM
-// calls - cross-function func_vals lookup
+#[test]
+fn cg_field_assign() {
+    insta::assert_snapshot!(check(
+        "struct P { x: Int } func main() -> Int { let p = P { x: 1 }; p.x = 5; return p.x; }"
+    ));
+}
 
-// Reviewing .ll snapshots: unlike TIR (which is designed the format of), LLVM's IR format is fixed, so we are reading LLVM's output.
-// What to check: the function signature matches (define i64 @answer()), the allocas are in the entry block, loads/stores wire to the right slots,
-// br/ret terminators are present, and - critically - it verifies (the harness asserts this). You don't need to hand-trace every SSA value the way we did TIR;
-// the verifier catches structural errors, and we are mostly confirming the shape is sane (right number of blocks, branches go where TIR said).
-// The .ll is more "does this look like reasonable IR" than "is every value correct" - because the verifier already guarantees validity,
-// and the TIR snapshots already guaranteed the logic.
+#[test]
+fn cg_nested_field_assign() {
+    insta::assert_snapshot!(check(
+        "struct Inner { v: Int } struct Outer { inner: Inner }
+         func main() -> Int { let o = Outer { inner: Inner { v: 1 } }; o.inner.v = 9; return o.inner.v; }"
+    ));
+}
 
-// One optional-but-recommended step: after the IR verifies, run the optimization passes and snapshot the optimized IR too,
-// to confirm mem2reg actually promotes the allocas to SSA (the payoff of the whole memory-based design).
-// But that's a nice-to-have; get unoptimized IR verifying and snapshotted first.
+#[test]
+fn cg_methods() {
+    insta::assert_snapshot!(check(
+        "struct C { n: Int }
+         func C.new() -> C { return C { n: 0 }; }
+         func C.get(self) -> Int { return self.n; }
+         func C.inc(mut self) { self.n = self.n + 1; }
+         func main() -> Int { let c = C.new(); c.inc(); return c.get(); }"
+    ))
+}

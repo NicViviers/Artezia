@@ -256,3 +256,24 @@ fn struct_nested_field_access() {
         "struct Inner { foo: Bool } struct Outer { bar: Inner } func main() { let inner = Inner { foo: true }; let outer = Outer { bar: inner }; }"
     ))
 }
+
+#[test]
+fn struct_out_of_order_construction() {
+    insta::assert_snapshot!(check(
+        "struct P { x: Int, y: Bool } func main() { let p = P { y: true, x: 1 }; }"
+    ));
+}
+
+#[test]
+fn lower_method_byvalue_self() {
+    insta::assert_snapshot!(check(
+        "struct C { n: Int } func C.get(self) -> Int { return self.n; }"
+    ))
+}
+
+#[test]
+fn lower_method_mut_self() {
+    insta::assert_snapshot!(check(
+        "struct C { n: Int } func C.inc(mut self) { self.n = self.n + 1; }"
+    ))
+}

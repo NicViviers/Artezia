@@ -20,23 +20,45 @@ pub fn typecheck(
 
     for item in &file.items {
         if let ast::Item::Func(f) = item {
-            let params: Vec<TypeId> =
+            // Explicit params only - this is what the per-param loop zips against
+            let declared: Vec<TypeId> =
                 f.params.iter().map(|p| c.lower_type(&p.ty)).collect();
-            let ret = f
-                .ret
-                .as_ref()
-                .map_or(c.a.prims.unit, |t| c.lower_type(t));
-            let fty = c
-                .a
-                .type_table
-                .intern(Type::Func { params: params.clone(), ret });
 
-            // The defs convention pays off: defining node -> its own DefId
+            // Receiver type (methods only); also types `self` itself
+            let self_ty = match (&f.receiver, &f.receiver_type_span) {
+                (Some(sp), Some(type_span)) => {
+                    let tsym = c.a.symbols.intern(&c.src[type_span.clone()]);
+                    let sdef = c.a.struct_names.get(&tsym).copied();
+                    let ty = match sdef {
+                        Some(sdef) => c.a.type_table.intern(Type::Struct(sdef)),
+                        None => c.a.prims.error, // Already diagnosed - silent
+                    };
+
+                    if let Some(&sd) = c.a.defs.get(&sp.id) {
+                        c.a.def_types.insert(sd, ty);  // `self`'s own type
+                    }
+
+                    Some(ty)
+                }
+                _ => None,
+            };
+
+            // The function type's params: receiver first, then the declared ones
+            let mut params = Vec::with_capacity(declared.len() + 1);
+            if let Some(st) = self_ty {
+                params.push(st);
+            }
+            params.extend(declared.iter().copied());
+
+            let ret = f.ret.as_ref().map_or(c.a.prims.unit, |t| c.lower_type(t));
+            let fty = c.a.type_table.intern(Type::Func { params, ret });
+
             if let Some(&def) = c.a.defs.get(&f.id) {
                 c.a.def_types.insert(def, fty);
             }
 
-            for (p, ty) in f.params.iter().zip(&params) {
+            // Per-param types - zips `declared`, NOT `params` (which now has self at 0)
+            for (p, ty) in f.params.iter().zip(&declared) {
                 if let Some(&pd) = c.a.defs.get(&p.id) {
                     c.a.def_types.insert(pd, *ty);
                 }
@@ -347,11 +369,8 @@ impl Checker<'_> {
             }
 
             ast::Expr::Assign { target, value, .. } => {
-                if !matches!(**target, ast::Expr::Var { .. }) {
-                    self.error(
-                        target.span(),
-                        "invalid assignment target".to_string(),
-                    );
+                if !is_place(target) {
+                    self.error(target.span(), "invalid assignment target".to_string());
                 }
                 let tty = self.check_expr(target);
                 let vty = self.check_expr(value);
@@ -359,33 +378,38 @@ impl Checker<'_> {
                 p.unit // assignment yields Unit
             }
 
-            ast::Expr::Call { callee, args, span, .. } => {
-                let fty = self.check_expr(callee);
-                match self.a.type_table.get(fty).clone() {
-                    Type::Func { params, ret } => {
-                        if args.len() != params.len() {
-                            let msg = format!(
-                                "this call takes {} argument(s), found {}",
-                                params.len(),
-                                args.len()
-                            );
-                            self.error(span.clone(), msg);
-                        }
+            ast::Expr::Call { id, callee, args, span, .. } => {
+                if let Some(t) = self.try_method_call(*id, callee, args, span) {
+                    t
+                } else {
+                    let fty = self.check_expr(callee);
 
-                        for (arg, &pty) in args.iter().zip(&params) {
-                            let aty = self.check_expr(&arg.value);
-                            self.expect_type(aty, pty, arg.value.span());
+                    match self.a.type_table.get(fty).clone() {
+                        Type::Func { params, ret } => {
+                            if args.len() != params.len() {
+                                let msg = format!(
+                                    "this call takes {} argument(s), found {}",
+                                    params.len(),
+                                    args.len()
+                                );
+                                self.error(span.clone(), msg);
+                            }
+
+                            for (arg, &pty) in args.iter().zip(&params) {
+                                let aty = self.check_expr(&arg.value);
+                                self.expect_type(aty, pty, arg.value.span());
+                            }
+                            ret
                         }
-                        ret
-                    }
-                    Type::Error => p.error, // poison: silent
-                    _ => {
-                        let msg = format!(
-                            "this is not callable (it has type {})",
-                            self.a.type_table.display(fty)
-                        );
-                        self.error(callee.span(), msg);
-                        p.error
+                        Type::Error => p.error, // poison: silent
+                        _ => {
+                            let msg = format!(
+                                "this is not callable (it has type {})",
+                                self.a.type_table.display(fty)
+                            );
+                            self.error(callee.span(), msg);
+                            p.error
+                        }
                     }
                 }
             }
@@ -465,19 +489,25 @@ impl Checker<'_> {
                         for dname in decl_names {
                             let lit_idx = fields.iter().position(|fi| {
                                 self.a.symbols.intern(&self.src[fi.name_span.clone()]) == dname
-                            }).unwrap_or(0); // typecheck already errored on missing fields
+                            });
 
-                            order.push(lit_idx);
+                            match lit_idx {
+                                Some(idx) => order.push(idx),
+                                None => {
+                                    self.error(
+                                        type_span.clone(),
+                                        format!("missing field `{}` in struct literal", self.a.symbols.resolve(dname))
+                                    );
+                                    order.push(0); // Typecheck errored so lowering won't run
+                                }
+                            }
                         }
 
                         self.a.structlit_order.insert(*id, order);
                         self.a.type_table.intern(Type::Struct(def))
                     }
 
-                    None => {
-                        self.error(type_span.clone(), format!("unknown struct `{}`", &self.src[type_span.clone()]));
-                        p.error
-                    }
+                    None => p.error
                 }
             }
 
@@ -524,11 +554,105 @@ impl Checker<'_> {
         self.a.types.insert(e.id(), ty);
         ty
     }
+
+    /// `recv.name(args)` where recv is a struct with a method `name`. Returns None if this isn't a method call
+    fn try_method_call(
+        &mut self,
+        call_id: ast::NodeId,
+        callee: &ast::Expr,
+        args: &[ast::Arg],
+        span: &Span
+    ) -> Option<TypeId> {
+        let p = self.a.prims;
+        let ast::Expr::Field { obj, name_span, .. } = callee else { return None };
+
+        let msym = self.a.symbols.intern(&self.src[name_span.clone()]);
+
+        // `Type.method(...)` - obj names a struct type -> associated call
+        if let ast::Expr::Var { span: base_span, .. } = &**obj {
+            let tsym = self.a.symbols.intern(&self.src[base_span.clone()]);
+
+            if let Some(&sdef) = self.a.struct_names.get(&tsym).map(|d| d) {
+                let Some(&mdef) = self.a.methods.get(&(sdef, msym)) else {
+                    self.error(name_span.clone(),
+                        format!("no associated function `{}` on this struct",
+                            &self.src[name_span.clone()]));
+                    return Some(p.error);
+                };
+
+                self.a.defs.insert(call_id, mdef);
+
+                if !matches!(self.a.method_receivers.get(&mdef), Some(ast::Receiver::None)) {
+                    self.error(span.clone(), "this is a method — call it on a value, not the type".to_string());
+                }
+
+                let fty = self.a.def_types[&mdef];
+                let Type::Func { params, ret } = self.a.type_table.get(fty).clone()
+                    else { return Some(p.error) };
+
+                // No receiver: args line up with all params
+                if args.len() != params.len() {
+                    self.error(span.clone(), format!("this call takes {} argument(s), found {}", params.len(), args.len()));
+                }
+
+                for (arg, &pty) in args.iter().zip(&params) {
+                    let aty = self.check_expr(&arg.value);
+                    self.expect_type(aty, pty, arg.value.span());
+                }
+
+                return Some(ret);
+            }
+        }
+
+        let recv_ty = self.check_expr(obj);
+        let Type::Struct(sdef) = *self.a.type_table.get(recv_ty) else { return None };
+
+        let Some(&mdef) = self.a.methods.get(&(sdef, msym)) else {
+            self.error(name_span.clone(), format!("no method `{}` on this struct", &self.src[name_span.clone()]));
+
+            return Some(p.error);
+        };
+
+        // Record for lowering, keyed on the call node
+        self.a.defs.insert(call_id, mdef);
+
+        // `mut self` -> the receiver must be a local variable
+        if matches!(self.a.method_receivers.get(&mdef), Some(ast::Receiver::MutSelf)) && !matches!(**obj, ast::Expr::Var { .. }) {
+            self.error(obj.span(),
+                "a mutating method must be called on a variable".to_string());
+        }
+
+        let fty = self.a.def_types[&mdef];
+        let Type::Func { params, ret } = self.a.type_table.get(fty).clone() else {
+            return Some(p.error);
+        };
+
+        if args.len() + 1 != params.len() {
+            self.error(span.clone(), format!(
+                "this call takes {} argument(s), found {}",
+                params.len().saturating_sub(1), args.len()));
+        }
+        
+        for (arg, &pty) in args.iter().zip(params.iter().skip(1)) {
+            let aty = self.check_expr(&arg.value);
+            self.expect_type(aty, pty, arg.value.span());
+        }
+
+        Some(ret)
+    }
 }
 
 fn block_always_returns(b: &ast::Block) -> bool {
     b.stmts.iter().any(stmt_always_returns)
         || b.tail.is_some()
+}
+
+fn is_place(e: &ast::Expr) -> bool {
+    match e {
+        ast::Expr::Var { .. } => true,
+        ast::Expr::Field { obj, .. } => is_place(obj), // x.a.b is a place if x
+        _ => false
+    }
 }
 
 fn stmt_always_returns(s: &ast::Stmt) -> bool {

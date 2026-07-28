@@ -1,0 +1,5 @@
+---
+source: crates/arteziac/tests/typecheck.rs
+expression: "check(\"struct C { n: Int } func main() { let c = C { n: 0 }; c.foo(); }\")"
+---
+56..59: no method `foo` on this struct

@@ -76,7 +76,13 @@ impl<'a> Lowerer<'a> {
     }
 
     fn new_local(&mut self, ty: TypeId, name: Option<String>) -> LocalId {
-        self.f.locals.push(LocalInfo { ty, name });
+        self.f.locals.push(LocalInfo { ty, name, is_ptr: false });
+        LocalId(self.f.locals.len() as u32 - 1)
+    }
+
+    /// A local that holds a pointer (currently only a `mut self` receiver)
+    fn new_local_ptr(&mut self, ty: TypeId, name: Option<String>) -> LocalId {
+        self.f.locals.push(LocalInfo { ty, name, is_ptr: true });
         LocalId(self.f.locals.len() as u32 - 1)
     }
 
@@ -91,6 +97,53 @@ impl<'a> Lowerer<'a> {
 
     fn current_terminated(&self) -> bool {
         !matches!(self.f.blocks[self.cur.0 as usize].term, Terminator::Unfinished)
+    }
+
+    fn place_root_is_ptr(&self, e: &ast::Expr) -> bool {
+        match e {
+            ast::Expr::Var { id, .. } => self.a.defs.get(id)
+                .and_then(|d| self.def_local.get(d))
+                .map(|l| self.f.locals[l.0 as usize].is_ptr)
+                .unwrap_or(false),
+            
+            ast::Expr::Field { obj, .. } => self.place_root_is_ptr(obj),
+            _ => false
+        }
+    }
+
+    /// Produce a pointer to an assignable place (a local or a field chain)
+    fn lower_place_addr(&mut self, e: &ast::Expr) -> ValueId {
+        match e {
+            ast::Expr::Var { id, .. } => {
+                let def = self.a.defs[id];
+                let local = self.def_local[&def];
+                let ty = self.ty(e);
+                
+                if self.f.locals[local.0 as usize].is_ptr {
+                    self.emit(InstrKind::LoadLocal(local), ty, e.id())
+                } else {
+                    self.emit(InstrKind::AddrOfLocal(local), ty, e.id())
+                }
+            }
+
+            ast::Expr::Field { id, obj, .. } => {
+                let base = self.lower_place_addr(obj); // Recursive to address the base first
+                let obj_ty = self.ty(obj);
+                let sdef = match self.a.type_table.get(obj_ty) {
+                    Type::Struct(d) => *d,
+                    _ => unreachable!("typecheck guaranteed a struct base")
+                };
+                let index = self.a.field_indices[id];
+                let ty = self.ty(e);
+                self.emit(InstrKind::FieldPtr {
+                    base,
+                    def: sdef,
+                    index
+                }, ty, e.id())
+            }
+
+            _ => unreachable!("typecheck guaranteed a place")
+        }
     }
 
     fn lower_block(&mut self, b: &ast::Block) {
@@ -217,6 +270,7 @@ impl<'a> Lowerer<'a> {
                 self.emit_effect(InstrKind::ScopeExit, *id);
             }
 
+            #[allow(unused)]
             _ => todo!("lower_stmt: {s:?}")
         }
     }
@@ -277,7 +331,13 @@ impl<'a> Lowerer<'a> {
             ast::Expr::Var { id, .. } => {
                 let def = self.a.defs[id];
                 let local = self.def_local[&def];
-                self.emit(InstrKind::LoadLocal(local), ty, origin)
+                
+                if self.f.locals[local.0 as usize].is_ptr {
+                    let ptr = self.emit(InstrKind::LoadLocal(local), ty, origin);
+                    self.emit(InstrKind::LoadPtr { ptr }, ty, origin)
+                } else {
+                    self.emit(InstrKind::LoadLocal(local), ty, origin)
+                }
             }
 
             ast::Expr::Unary { op, rhs, .. } => {
@@ -300,7 +360,26 @@ impl<'a> Lowerer<'a> {
                 self.emit(InstrKind::RangeNew { lo: l, hi: h, inclusive: *inclusive }, ty, origin)
             }
 
-            ast::Expr::Call { callee, args, .. } => {
+            ast::Expr::Call { id, callee, args, .. } => {
+                // If method call
+                if let ast::Expr::Field { obj, .. } = &**callee {
+                    if let Some(&mdef) = self.a.defs.get(id) {
+                        let mut arg_vals = Vec::new();
+
+                        match self.a.method_receivers[&mdef] {
+                            ast::Receiver::None => {} // No receiver
+                            ast::Receiver::MutSelf => arg_vals.push(self.lower_place_addr(obj)),
+                            ast::Receiver::ByValue => arg_vals.push(self.lower_expr(obj))
+                        }
+                        
+                        for a in args {
+                            arg_vals.push(self.lower_expr(&a.value));
+                        }
+
+                        return self.emit(InstrKind::Call { func: mdef, args: arg_vals }, ty, origin);
+                    }
+                }
+
                 let fdef = self.a.defs[&callee.id()];
                 let args_vals: Vec<ValueId> = args.iter().map(|arg| self.lower_expr(&arg.value)).collect();
                 self.emit(InstrKind::Call { func: fdef, args: args_vals }, ty, origin)
@@ -308,9 +387,23 @@ impl<'a> Lowerer<'a> {
 
             ast::Expr::Assign { target, value, .. } => {
                 let v = self.lower_expr(value);
-                let def = self.a.defs[&target.id()];
-                let local = self.def_local[&def];
-                self.emit_effect(InstrKind::StoreLocal(local, v), origin);
+
+                match &**target {
+                    ast::Expr::Var { id, .. } => {
+                        let def = self.a.defs[id];
+                        let local = self.def_local[&def];
+                        self.emit_effect(InstrKind::StoreLocal(local, v), origin);
+                    }
+
+                    _ => {
+                        let ptr = self.lower_place_addr(target);
+                        self.emit_effect(InstrKind::StorePtr {
+                            ptr,
+                            value: v
+                        }, origin);
+                    }
+                }
+
                 self.emit(InstrKind::ConstUnit, self.a.prims.unit, origin)
             }
 
@@ -398,9 +491,14 @@ impl<'a> Lowerer<'a> {
             }
 
             ast::Expr::Field { id, obj, .. } => {
-                let base = self.lower_expr(obj);
-                let index = self.a.field_indices[id];
-                self.emit(InstrKind::FieldGet { base, index }, ty, origin)
+                if self.place_root_is_ptr(obj) {
+                    let ptr = self.lower_place_addr(e); // Address of this field
+                    self.emit(InstrKind::LoadPtr { ptr }, ty, origin)
+                } else {
+                    let base = self.lower_expr(obj); // Existing value path
+                    let index = self.a.field_indices[id];
+                    self.emit(InstrKind::FieldGet { base, index }, ty, origin)
+                }
             }
 
             _ => todo!("lower_expr: {e:?}")
@@ -535,6 +633,20 @@ fn lower_func(src: &ast::Func, a: &Analysis) -> Function {
     // bb0 - entry block
     let entry = lw.new_block();
     lw.switch_to(entry);
+
+    // Create local receiver if any
+    if let Some(sp) = &src.receiver {
+        let sdef = a.defs[&sp.id];
+        let ty = a.def_types[&sdef]; // The struct type
+        let local = if sp.is_mut {
+            lw.new_local_ptr(ty, Some("self".to_string()))
+        } else {
+            lw.new_local(ty, Some("self".to_string()))
+        };
+
+        lw.f.params.push(local);
+        lw.def_local.insert(sdef, local);
+    }
 
     // Parameters become the first locals in declaration order
     for p in &src.params {

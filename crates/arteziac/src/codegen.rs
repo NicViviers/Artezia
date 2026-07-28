@@ -14,7 +14,8 @@ pub struct Codegen<'ctx> {
     blocks: HashMap<tir::BlockId, BasicBlock<'ctx>>, // TIR block -> LLVM block
     values: HashMap<tir::ValueId, BasicValueEnum<'ctx>>, // TIR temp -> LLVM value
     locals: HashMap<tir::LocalId, PointerValue<'ctx>>, // TIR slot -> alloca ptr
-    func_vals: HashMap<DefId, FunctionValue<'ctx>> // TIR func -> LLVM function
+    func_vals: HashMap<DefId, FunctionValue<'ctx>>, // TIR func -> LLVM function
+    local_types: HashMap<tir::LocalId, BasicTypeEnum<'ctx>>
 }
 
 impl<'ctx> Codegen<'ctx> {
@@ -28,14 +29,19 @@ impl<'ctx> Codegen<'ctx> {
             blocks: HashMap::new(),
             values: HashMap::new(),
             locals: HashMap::new(),
-            func_vals: HashMap::new()
+            func_vals: HashMap::new(),
+            local_types: HashMap::new()
         }
     }
 
     pub fn run(mut self, program: &tir::Program) -> Module<'ctx> {
         // Declare all function signatures
         for f in &program.funcs {
-            let param_types: Vec<_> = f.params.iter().map(|param| self.llvm_type(f.locals[param.0 as usize].ty).into()).collect();
+            let param_types: Vec<_> = f.params
+                .iter()
+                .map(|param| self.local_llvm_type(&f.locals[param.0 as usize]).into())
+                .collect();
+
             let fn_type = if f.ret_ty == self.a.prims.unit {
                 self.ctx.void_type().fn_type(&*param_types, false)
             } else {
@@ -75,6 +81,14 @@ impl<'ctx> Codegen<'ctx> {
         }
     }
 
+    fn local_llvm_type(&self, local: &tir::LocalInfo) -> BasicTypeEnum<'ctx> {
+        if local.is_ptr {
+            self.ctx.ptr_type(inkwell::AddressSpace::default()).into()
+        } else {
+            self.llvm_type(local.ty)
+        }
+    }
+
     fn struct_llvm_type(&self, def: DefId) -> StructType<'ctx> {
         let field_types: Vec<BasicTypeEnum> = self.a.struct_infos[&def]
             .fields
@@ -89,6 +103,7 @@ impl<'ctx> Codegen<'ctx> {
         self.blocks.clear();
         self.values.clear();
         self.locals.clear();
+        self.local_types.clear();
 
         let fv = self.func_vals[&f.def];
 
@@ -102,8 +117,10 @@ impl<'ctx> Codegen<'ctx> {
         self.builder.position_at_end(self.blocks[&tir::BlockId(0)]);
         for (i, local) in f.locals.iter().enumerate() {
             let name = local.name.as_deref().unwrap_or("tmp");
-            let ptr = self.builder.build_alloca(self.llvm_type(local.ty), name).unwrap();
+            let lty = self.local_llvm_type(local);
+            let ptr = self.builder.build_alloca(lty, name).unwrap();
             self.locals.insert(tir::LocalId(i as u32), ptr);
+            self.local_types.insert(tir::LocalId(i as u32), lty);
         }
 
         // Store incoming parameters into their slots
@@ -132,13 +149,38 @@ impl<'ctx> Codegen<'ctx> {
 
             LoadLocal(l) => {
                 let ptr = self.locals[l];
-                let ty = self.llvm_type(instr.ty);
+                let ty = self.local_types[l];
                 Some(self.builder.build_load(ty, ptr, "load").unwrap())
             }
 
             StoreLocal(l, v) => {
                 let val = self.values[v];
                 self.builder.build_store(self.locals[l], val).unwrap();
+                None // Effect only
+            }
+
+            AddrOfLocal(l) => Some(self.locals[l].into()), // The alloca pointer we already have
+
+            FieldPtr { base, def, index } => {
+                let sty = self.struct_llvm_type(*def);
+                let base_ptr = self.values[base].into_pointer_value();
+                let gep = self.builder
+                    .build_struct_gep(sty, base_ptr, *index, "fieldptr")
+                    .unwrap();
+
+                Some(gep.into())
+            }
+
+            LoadPtr { ptr } => {
+                let p = self.values[ptr].into_pointer_value();
+                let ty = self.llvm_type(instr.ty);
+                Some(self.builder.build_load(ty, p, "loadptr").unwrap())
+            }
+
+            StorePtr { ptr, value } => {
+                let p = self.values[ptr].into_pointer_value();
+                let v = self.values[value];
+                self.builder.build_store(p, v).unwrap();
                 None // Effect only
             }
 

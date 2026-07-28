@@ -1,0 +1,5 @@
+---
+source: crates/arteziac/tests/typecheck.rs
+expression: "check(\"struct C { n: Int } func C.inc(mut self) { self.n = self.n + 1; }\")"
+---
+no diagnostics

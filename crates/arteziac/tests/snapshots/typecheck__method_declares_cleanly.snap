@@ -1,0 +1,5 @@
+---
+source: crates/arteziac/tests/typecheck.rs
+expression: "check(\"struct Foo { n: Int } func Foo.get(self) -> Int { return 0; }\")"
+---
+no diagnostics

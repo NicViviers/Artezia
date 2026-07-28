@@ -296,10 +296,59 @@ pub fn resolve(file: &ast::File, src: &str, a: &mut Analysis, diags: &mut Vec<Di
         }
     }
 
+    // Method tables (All structs are declared by now)
+    for item in &file.items {
+        let ast::Item::Func(f) = item else { continue };
+
+        match &f.receiver_type_span {
+            Some(type_span) => {
+                let type_sym = r.a.symbols.intern(&r.src[type_span.clone()]);
+                let struct_def = match r.a.struct_names.get(&type_sym) {
+                    Some(&d) => d,
+                    None => {
+                        r.diags.push(Diagnostic::new(
+                            Severity::Error,
+                            type_span.clone(),
+                            format!("no struct named `{}`", &r.src[type_span.clone()])
+                        ));
+
+                        continue;
+                    }
+                };
+
+                let method_sym = r.a.symbols.intern(&r.src[f.name_span.clone()]);
+                let Some(&method_def) = r.a.defs.get(&f.id) else { continue }; // Declare failed
+                r.a.methods.insert((struct_def, method_sym), method_def);
+                
+                let recv = match &f.receiver {
+                    None => ast::Receiver::None,
+                    Some(sp) if sp.is_mut => ast::Receiver::MutSelf,
+                    Some(_) => ast::Receiver::ByValue
+                };
+                r.a.method_receivers.insert(method_def, recv);
+            }
+
+            None => {
+                // A plain `func` may not have a receiver
+                if f.receiver.is_some() {
+                    r.diags.push(Diagnostic::new(
+                        Severity::Error,
+                        f.name_span.clone(),
+                        "`self` is only valid in a method (`func Type.name(self)`)".to_string()
+                    ));
+                }
+            }
+        }
+    }
+
     // Walk bodies - every function name will already exist by now
     for item in &file.items {
         if let ast::Item::Func(f) = item {
             r.push(); // param scope
+
+            if let Some(sp) = &f.receiver {
+                r.declare(&sp.span, DefKind::Param, sp.id);
+            }
 
             for p in &f.params {
                 r.declare(&p.name_span, DefKind::Param, p.id);

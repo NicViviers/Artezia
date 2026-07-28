@@ -109,3 +109,64 @@ fn construction_missing_field() {
         "struct Foo { bar: Int, baz: Int } func main() { let f = Foo { bar: 5 }; }"
     ));
 }
+
+#[test]
+fn method_declares_cleanly() {
+    // Body deliberately doesn't touch `self` - tests declaration + table population work
+    insta::assert_snapshot!(check(
+        "struct Foo { n: Int } func Foo.get(self) -> Int { return 0; }"
+    ));
+}
+
+#[test]
+fn method_on_unknown_type() {
+    insta::assert_snapshot!(check(
+        "func Ghost.get(self) -> Int { return 0; }"
+    ));
+}
+
+#[test]
+fn self_on_plain_function() {
+    insta::assert_snapshot!(check(
+        "func plain(self) -> Int { return 0; }"
+    ));
+}
+
+#[test]
+fn struct_field_access() {
+    insta::assert_snapshot!(check(
+        "struct C { n: Int } func C.get(self) -> Int { return self.n; }"
+    ))
+}
+
+#[test]
+fn struct_field_mutate() {
+    insta::assert_snapshot!(check(
+        "struct C { n: Int } func C.inc(mut self) { self.n = self.n + 1; }"
+    ))
+}
+
+#[test]
+fn mut_self_on_nonlocal_receiver() {
+    // Should produce a diagnostic
+    insta::assert_snapshot!(check(
+        "struct C { n: Int } func C.new() -> C { return C { n: 0 }; }
+         func C.inc(mut self) { self.n = self.n + 1 } func main() { C.new().inc(); }"
+    ))
+}
+
+#[test]
+fn mut_self_on_local_receiver() {
+    // Should not produce a diagnostic since `C.new()` is assigned to a local
+    insta::assert_snapshot!(check(
+        "struct C { n: Int } func C.new() -> C { return C { n: 0 }; }
+         func C.inc(mut self) { self.n = self.n + 1 } func main() { let c = C.new(); c.inc(); }"
+    ))
+}
+
+#[test]
+fn unknown_method() {
+    insta::assert_snapshot!(check(
+        "struct C { n: Int } func main() { let c = C { n: 0 }; c.foo(); }"
+    ))
+}

@@ -57,14 +57,21 @@ pub struct Func {
     pub id: NodeId,
     pub name_span: Span, // the identifier's span; name interned later
     pub receiver_type_span: Option<Span>, // Some("Foo") for `Foo.new`, None for plain functions
-    pub receiver: Receiver,
+    pub receiver: Option<SelfParam>,
     pub params: Vec<Param>,
     pub ret: Option<Type>, // None = Unit
     pub body: Block,
     pub span: Span, // `func` keyword through closing `}`
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct SelfParam {
+    pub id: NodeId,
+    pub span: Span,
+    pub is_mut: bool
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Receiver {
     None,
     ByValue,

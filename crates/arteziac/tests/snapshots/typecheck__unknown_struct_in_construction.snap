@@ -1,7 +1,5 @@
 ---
 source: crates/arteziac/tests/typecheck.rs
-assertion_line: 100
 expression: "check(\"func main() { let f = Nonexistent { bar: 5 }; }\")"
 ---
-22..33: unknown struct `Nonexistent`
 22..33: unknown struct `Nonexistent`

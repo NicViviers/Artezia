@@ -1,6 +1,5 @@
 ---
 source: crates/arteziac/tests/typecheck.rs
-assertion_line: 34
 expression: "check(\"struct Foo { bar: Int } func main() -> Int { let f = Foo { bar: 5 }; return f.bar; }\")"
 ---
 no diagnostics

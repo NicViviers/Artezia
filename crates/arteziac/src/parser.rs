@@ -217,6 +217,11 @@ impl Parser {
                 Some(ast::Expr::Error { id: self.mk_id(), span })
             }
 
+            Token::Self_ => {
+                let span = self.advance();
+                Some(ast::Expr::Var { id: self.mk_id(), span })
+            }
+
             _ => {
                 let (tok, span) = self.cur();
                 self.diags.push(Diagnostic::new(
@@ -644,18 +649,26 @@ impl Parser {
 
         // Handle possible receiver first (`self` or `mut self`)
         let receiver = if matches!(self.cur().0, Token::Self_) {
-            self.advance();
-            ast::Receiver::ByValue
-        } else if matches!(self.cur().0, Token::Mut) && matches!(self.peek().0, Token::Self_) {
-            self.advance();
-            self.advance();
-            ast::Receiver::MutSelf
+            let span = self.advance();
+            Some(ast::SelfParam {
+                id: self.mk_id(),
+                span,
+                is_mut: false
+            })
+        } else if matches!(self.cur().0, Token::Mut) && matches!(self.peek().0,Token::Self_) {
+            self.advance(); // `mut` - span deliberately discarded otherwise the binding in the body would never resolve on `mut self`
+            let span = self.advance();
+            Some(ast::SelfParam {
+                id: self.mk_id(),
+                span,
+                is_mut: true
+            })
         } else {
-            ast::Receiver::None
+            None
         };
 
-        if !matches!(receiver, ast::Receiver::None) {
-            self.eat(Token::Comma); // Optional `self, x: Int`
+        if receiver.is_none() {
+            self.eat(Token::Comma);
         }
 
         while !matches!(self.cur().0, Token::RParen | Token::EOF) {

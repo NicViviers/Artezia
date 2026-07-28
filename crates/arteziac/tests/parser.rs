@@ -78,3 +78,5 @@ fn struct_complex() {
     // TODO: Consider where parse_struct should just eat trailing commas? For now it produces diagnostics on it expecting a new field
     insta::assert_snapshot!(check("struct Multi { lhs: Int, rhs: Int } struct Trailing { foo: Bool,, } struct Empty {  }"));
 }
+
+// TODO: Run tests for typecheck.rs and consider above comment

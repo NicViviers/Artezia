@@ -1,0 +1,11 @@
+---
+source: crates/arteziac/tests/lower.rs
+expression: "check(\"struct C { n: Int } func C.get(self) -> Int { return self.n; }\")"
+---
+func C$get(%0) -> Int {
+  local %0: struct#0 (self)
+  bb0:
+    v0 = load %0
+    v1 = field.get v0.0
+    return v1
+}

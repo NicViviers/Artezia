@@ -1,0 +1,19 @@
+---
+source: crates/arteziac/tests/codegen.rs
+expression: "check(\"struct Inner { v: Int } struct Outer { inner: Inner }\n         func main() -> Int { let o = Outer { inner: Inner { v: 1 } }; o.inner.v = 9; return o.inner.v; }\")"
+---
+; ModuleID = 'artezia'
+source_filename = "artezia"
+
+define i64 @main() {
+bb0:
+  %o = alloca { { i64 } }, align 8
+  store { { i64 } } { { i64 } { i64 1 } }, ptr %o, align 4
+  %fieldptr = getelementptr inbounds nuw { { i64 } }, ptr %o, i32 0, i32 0
+  %fieldptr1 = getelementptr inbounds nuw { i64 }, ptr %fieldptr, i32 0, i32 0
+  store i64 9, ptr %fieldptr1, align 4
+  %load = load { { i64 } }, ptr %o, align 4
+  %field = extractvalue { { i64 } } %load, 0
+  %field2 = extractvalue { i64 } %field, 0
+  ret i64 %field2
+}

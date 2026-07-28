@@ -1,0 +1,45 @@
+---
+source: crates/arteziac/tests/codegen.rs
+expression: "check(\"struct C { n: Int }\n         func C.new() -> C { return C { n: 0 }; }\n         func C.get(self) -> Int { return self.n; }\n         func C.inc(mut self) { self.n = self.n + 1; }\n         func main() -> Int { let c = C.new(); c.inc(); return c.get(); }\")"
+---
+; ModuleID = 'artezia'
+source_filename = "artezia"
+
+define { i64 } @"C$new"() {
+bb0:
+  ret { i64 } zeroinitializer
+}
+
+define i64 @"C$get"({ i64 } %0) {
+bb0:
+  %self = alloca { i64 }, align 8
+  store { i64 } %0, ptr %self, align 4
+  %load = load { i64 }, ptr %self, align 4
+  %field = extractvalue { i64 } %load, 0
+  ret i64 %field
+}
+
+define void @"C$inc"(ptr %0) {
+bb0:
+  %self = alloca ptr, align 8
+  store ptr %0, ptr %self, align 8
+  %load = load ptr, ptr %self, align 8
+  %fieldptr = getelementptr inbounds nuw { i64 }, ptr %load, i32 0, i32 0
+  %loadptr = load i64, ptr %fieldptr, align 4
+  %add = add i64 %loadptr, 1
+  %load1 = load ptr, ptr %self, align 8
+  %fieldptr2 = getelementptr inbounds nuw { i64 }, ptr %load1, i32 0, i32 0
+  store i64 %add, ptr %fieldptr2, align 4
+  ret void
+}
+
+define i64 @main() {
+bb0:
+  %c = alloca { i64 }, align 8
+  %call = call { i64 } @"C$new"()
+  store { i64 } %call, ptr %c, align 4
+  call void @"C$inc"(ptr %c)
+  %load = load { i64 }, ptr %c, align 4
+  %call1 = call i64 @"C$get"({ i64 } %load)
+  ret i64 %call1
+}

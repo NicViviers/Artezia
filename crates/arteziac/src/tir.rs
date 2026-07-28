@@ -29,7 +29,8 @@ pub struct Function {
 #[derive(Debug)]
 pub struct LocalInfo {
     pub ty: TypeId,
-    pub name: Option<String> // for dumps/debug info
+    pub name: Option<String>, // for dumps/debug info
+    pub is_ptr: bool
 }
 
 #[derive(Debug)]
@@ -87,6 +88,21 @@ pub enum InstrKind {
     // Memory
     LoadLocal(LocalId),
     StoreLocal(LocalId, ValueId),
+    AddrOfLocal(LocalId), // Pointer to a local's slot
+    FieldPtr { // GEP: Pointer to a field
+        base: ValueId,
+        def: DefId,
+        index: u32
+    },
+
+    LoadPtr { // Load through a pointer
+        ptr: ValueId
+    },
+
+    StorePtr { // Store through a pointer
+        ptr: ValueId,
+        value: ValueId
+    },
 
     // Computation
     Binary {
@@ -145,6 +161,10 @@ impl InstrKind {
             ConstInt(_) | ConstFloat(_) | ConstBool(_) | ConstStr(_) | ConstChar(_) | ConstDuration(_) | ConstUnit => Vec::new(),
             LoadLocal(_) => Vec::new(),
             StoreLocal(_, v) => vec![*v],
+            AddrOfLocal(_) => Vec::new(),
+            FieldPtr { base, .. } => vec![*base],
+            LoadPtr { ptr } => vec![*ptr],
+            StorePtr {  ptr, value } => vec![*ptr, *value],
             Binary { l, r, .. } => vec![*l, *r],
             Unary { v, .. } => vec![*v],
             RangeNew { lo, hi, .. } => vec![*lo, *hi],
@@ -206,8 +226,9 @@ pub fn dump(f: &Function, a: &Analysis) -> String {
             .unwrap_or_default();
 
         out.push_str(&format!(
-            "  local %{}: {}{}\n",
+            "  local %{}: {}{}{}\n",
             i,
+            if l.is_ptr { "ptr -> " } else { "" },
             a.type_table.display(l.ty),
             name
         ));
@@ -256,6 +277,10 @@ fn fmt_instr(k: &InstrKind, a: &Analysis) -> String {
  
         LoadLocal(l) => format!("load %{}", l.0),
         StoreLocal(l, v) => format!("store %{}, v{}", l.0, v.0),
+        AddrOfLocal(l) => format!("addr %{}", l.0),
+        FieldPtr { base, def, index } => format!("field.ptr v{}.{} (#{})", base.0, index, def.0),
+        LoadPtr { ptr } => format!("load.ptr v{}", ptr.0),
+        StorePtr { ptr, value } => format!("store.ptr v{}, v{}", ptr.0, value.0),
  
         Binary { op, l, r } => {
             format!("{} v{}, v{}", fmt_binop(*op), l.0, r.0)
@@ -414,7 +439,7 @@ pub fn verify(f: &Function) {
     for (bi, b) in f.blocks.iter().enumerate() {
         for ins in &b.instrs {
             let local = match &ins.kind {
-                InstrKind::LoadLocal(l) | InstrKind::StoreLocal(l, _) => Some(*l),
+                InstrKind::LoadLocal(l) | InstrKind::StoreLocal(l, _) | InstrKind::AddrOfLocal(l) => Some(*l),
                 _ => None
             };
 

@@ -1,0 +1,17 @@
+---
+source: crates/arteziac/tests/codegen.rs
+expression: "check(\"struct P { x: Int } func main() -> Int { let p = P { x: 1 }; p.x = 5; return p.x; }\")"
+---
+; ModuleID = 'artezia'
+source_filename = "artezia"
+
+define i64 @main() {
+bb0:
+  %p = alloca { i64 }, align 8
+  store { i64 } { i64 1 }, ptr %p, align 4
+  %fieldptr = getelementptr inbounds nuw { i64 }, ptr %p, i32 0, i32 0
+  store i64 5, ptr %fieldptr, align 4
+  %load = load { i64 }, ptr %p, align 4
+  %field = extractvalue { i64 } %load, 0
+  ret i64 %field
+}

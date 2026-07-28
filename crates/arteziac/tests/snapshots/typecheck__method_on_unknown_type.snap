@@ -1,0 +1,5 @@
+---
+source: crates/arteziac/tests/typecheck.rs
+expression: "check(\"func Ghost.get(self) -> Int { return 0; }\")"
+---
+5..10: no struct named `Ghost`

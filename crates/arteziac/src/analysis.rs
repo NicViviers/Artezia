@@ -14,7 +14,7 @@
 use std::collections::HashMap;
 use artezia_diag::Diagnostic;
 use crate::parser::Span;
-use crate::ast::{self, NodeId};
+use crate::ast::{self, NodeId, Receiver};
 
 /// An interned string. `Symbol(5)` means "the spelling that was interned 5th"
 /// - e.g. the name "x". IMPORTANT: a Symbol is a spelling, not a variable.
@@ -255,7 +255,9 @@ pub struct Analysis {
 
     /// Intermediates for structs
     pub field_indices: HashMap<NodeId, u32>, // Field node -> field's index
-    pub structlit_order: HashMap<NodeId, Vec<usize>> // StructLit node -> [decl-pos -> literal index]
+    pub structlit_order: HashMap<NodeId, Vec<usize>>, // StructLit node -> [decl-pos -> literal index]
+    pub methods: HashMap<(DefId, Symbol), DefId>, // (struct, method name) -> method's DefId
+    pub method_receivers: HashMap<DefId, Receiver> // method DefId -> None/ByValue/MutSelf
 }
 
 impl Analysis {
@@ -285,7 +287,9 @@ impl Analysis {
             struct_infos: HashMap::new(),
             struct_names: HashMap::new(),
             field_indices: HashMap::new(),
-            structlit_order: HashMap::new()
+            structlit_order: HashMap::new(),
+            methods: HashMap::new(),
+            method_receivers: HashMap::new()
         }
     }
 }
