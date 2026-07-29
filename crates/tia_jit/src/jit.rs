@@ -21,7 +21,7 @@ fn dump_opt_code<'ctx>(module: Module<'ctx>) -> String {
     module.print_to_string().to_string()
 }
 
-fn run(src: &str) -> i64 {
+pub fn run(src: &str) -> i64 {
     let tokens = lex(src);
     let (file, pdiags) = Parser::new(tokens).parse_file();
     assert!(pdiags.is_empty(), "parse errors: {pdiags:?}");
@@ -35,11 +35,11 @@ fn run(src: &str) -> i64 {
     let module = Codegen::new(&ctx, &a).run(&program);
     module.verify().expect("LLVM verification failed");
 
-    println!("Pre-passes:\n{}", module.print_to_string().to_string());
-    println!("\n\nPost-passes:\n{}", dump_opt_code(module.clone()));
-
     Target::initialize_native(&InitializationConfig::default())
         .expect("failed to initialize native target");
+
+    println!("--- Pre-passes: ---\n{}", module.print_to_string().to_string());
+    println!("\n\n--- Post-passes: ---\n{}", dump_opt_code(module.clone()));
 
     let ee = module
         .create_jit_execution_engine(OptimizationLevel::None)
@@ -52,7 +52,6 @@ fn run(src: &str) -> i64 {
 }
 
 // TODO: Migrate or add some arteziac tests that use JIT to physically confirm functionality
-// TODO: Opt dump doesn't work - maybe because of WSL?
 
 #[cfg(test)]
 mod tests {

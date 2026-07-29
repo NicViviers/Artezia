@@ -1,0 +1,37 @@
+struct Range {
+    lo: Int,
+    hi: Int
+}
+
+func Range.new(lo: Int, hi: Int) -> Range {
+    return Range { lo: lo, hi: hi };
+}
+
+func Range.lo(self) -> Int {
+    return self.lo;
+}
+
+func Range.hi(self) -> Int {
+    return self.hi;
+}
+
+func Range.set_lo(mut self, lo: Int) {
+    self.lo = lo;
+}
+
+func Range.set_hi(mut self, hi: Int) {
+    self.hi = hi;
+}
+
+func Range.eq(self, rhs: Range) -> Bool {
+    return self.lo == rhs.lo and self.hi == rhs.hi;
+}
+
+func main() -> i64 {
+    let left = Range.new(0, 10);
+    let right = Range.new(11, 20);
+
+    let equal = left.eq(right);
+
+    return 0;
+}
