@@ -155,9 +155,9 @@ fn poison_zero_width_names() {
     ));
 }
 
-/// import introduces its last path segment (v0 behavior).
+/// import no longer declares the function, arteziac has to run the full pipeline before it exists
 #[test]
-fn import_introduces_name() {
+fn import_undefined_function() {
     insta::assert_snapshot!(check(
         "import std::io;\nfunc f() { io(); }"
     ));

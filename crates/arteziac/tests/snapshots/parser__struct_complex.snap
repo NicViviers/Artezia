@@ -113,6 +113,7 @@ File {
             "while parsing a field name",
         ],
         code: None,
+        secondary: [],
     },
     Diagnostic {
         severity: Error,
@@ -123,6 +124,7 @@ File {
             "while parsing a field's type annotation",
         ],
         code: None,
+        secondary: [],
     },
     Diagnostic {
         severity: Error,
@@ -133,5 +135,6 @@ File {
             "while parsing a type name",
         ],
         code: None,
+        secondary: [],
     },
 ]

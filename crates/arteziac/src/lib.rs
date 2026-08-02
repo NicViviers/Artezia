@@ -6,3 +6,4 @@ pub mod passes;
 pub mod tir;
 pub mod lower;
 pub mod codegen;
+pub mod loader;

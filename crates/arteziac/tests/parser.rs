@@ -1,4 +1,4 @@
-use arteziac::{lexer::lex, parser::Parser};
+use arteziac::{ast::Item, lexer::lex, parser::Parser};
 use insta::assert_snapshot;
 
 fn check(src: &str) -> String {
@@ -79,4 +79,19 @@ fn struct_complex() {
     insta::assert_snapshot!(check("struct Multi { lhs: Int, rhs: Int } struct Trailing { foo: Bool,, } struct Empty {  }"));
 }
 
-// TODO: Run tests for typecheck.rs and consider above comment
+#[test]
+fn node_ids_continue_across_files() {
+    let a = lex("func f() {}");
+    let mut p1 = Parser::with_id_base(a, 0);
+    let (f1, _) = p1.parse_file();
+    let base = p1.next_node_id();
+    assert!(base > 0);
+
+    let b = lex("func g() {}");
+    let mut p2 = Parser::with_id_base(b, base);
+    let (f2, _) = p2.parse_file();
+
+    for _ in 0 .. f1.items.len() {
+        assert!(f1.items.iter().filter(|item| f2.items.contains(*item)).last().is_none());
+    }
+}

@@ -67,5 +67,6 @@ File {
             "while parsing a variable name",
         ],
         code: None,
+        secondary: [],
     },
 ]

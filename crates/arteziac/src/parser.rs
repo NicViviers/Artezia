@@ -36,6 +36,21 @@ impl Parser {
         }
     }
 
+    pub fn with_id_base(tokens: Vec<(Token, Span)>, base: u32) -> Self {
+        Self {
+            pos: 0,
+            next_id: base,
+            diags: Vec::new(),
+            no_struct_literal: false,
+            eof_span: tokens.len() .. tokens.len(),
+            tokens
+        }
+    }
+
+    pub fn next_node_id(&self) -> u32 {
+        self.next_id
+    }
+
     /// Returns current token
     fn cur(&self) -> (Token, Span) {
         self.tokens.get(self.pos).map(|(t, span)| (*t, span.clone())).unwrap_or_else(|| (Token::EOF, self.eof_span.clone()))
@@ -757,7 +772,7 @@ impl Parser {
         }
     }
 
-    pub fn parse_file(mut self) -> (ast::File, Vec<Diagnostic>) {
+    pub fn parse_file(&mut self) -> (ast::File, Vec<Diagnostic>) {
         let mut items = Vec::new();
         self.skip_semicolons();
 
@@ -773,7 +788,7 @@ impl Parser {
             self.skip_semicolons();
         }
 
-        (ast::File { items }, self.diags)
+        (ast::File { items }, std::mem::take(&mut self.diags))
     }
 }
 

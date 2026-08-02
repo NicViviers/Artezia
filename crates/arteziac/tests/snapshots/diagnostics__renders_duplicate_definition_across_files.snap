@@ -1,0 +1,17 @@
+---
+source: crates/arteziac/tests/diagnostics.rs
+expression: "render_diags_multi(&[(\"a.tia\", \"func helper() -> Int { return 1; }\"),\n(\"b.tia\", \"func helper() -> Int { return 2; }\"),])"
+---
+Error: `helper` is already defined in this scope
+   ╭─[b.tia:1:6]
+   │
+ 1 │ func helper() -> Int { return 2; }
+   │      ───┬──  
+   │         ╰──── `helper` is already defined in this scope
+   │
+   ├─[a.tia:1:6]
+   │
+ 1 │ func helper() -> Int { return 1; }
+   │      ───┬──  
+   │         ╰──── first defined here
+───╯

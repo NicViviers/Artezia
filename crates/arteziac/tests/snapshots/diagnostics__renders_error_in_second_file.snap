@@ -1,0 +1,11 @@
+---
+source: crates/arteziac/tests/diagnostics.rs
+expression: "render_diags_multi(&[(\"a.tia\", \"func helper() -> Int { return 1; }\"),\n(\"b.tia\", \"func main() -> Int { return true; }\"),])"
+---
+Error: expected Int, found Bool
+   ╭─[b.tia:1:22]
+   │
+ 1 │ func main() -> Int { return true; }
+   │                      ─────┬─────  
+   │                           ╰─────── expected Int, found Bool
+───╯

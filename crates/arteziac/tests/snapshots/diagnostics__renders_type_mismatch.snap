@@ -1,0 +1,11 @@
+---
+source: crates/arteziac/tests/diagnostics.rs
+expression: "render_diags(\"struct Foo { bar: Int } func main() { let f = Foo { bar: true }; }\")"
+---
+Error: expected Int, found Bool
+   ╭─[test.tia:1:58]
+   │
+ 1 │ struct Foo { bar: Int } func main() { let f = Foo { bar: true }; }
+   │                                                          ──┬─  
+   │                                                            ╰─── expected Int, found Bool
+───╯

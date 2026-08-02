@@ -44,7 +44,7 @@ impl Resolver<'_> {
 
             self.diags.push(Diagnostic::new(Severity::Error, name_span.clone(),
                 format!("`{}` is already defined in this scope", self.a.symbols.resolve(sym)))
-                .with_note(format!("first defined at {}..{}", first.start, first.end))); // TODO: Can this highlight the line where it's first defined?
+                .with_secondary(first, "first defined here"));
 
             return Some(prev); // Keep the first usable
         }
@@ -272,11 +272,13 @@ pub fn resolve(file: &ast::File, src: &str, a: &mut Analysis, diags: &mut Vec<Di
                 None => { r.declare(&f.name_span, DefKind::Func, f.id); }
             }
 
-            ast::Item::Import(imp) => {
-                // Only pull last part of the path: `io` from `import std::io`
-                if let Some(last) = imp.path.last() {
-                    r.declare(last, DefKind::Import, imp.id);
-                }
+            // noop since the loader already pulled the file in
+            ast::Item::Import(_imp) => {
+                // TODO: Remove if confirmed redundant
+                // // Only pull last part of the path: `io` from `import std::io`
+                // if let Some(last) = imp.path.last() {
+                //     r.declare(last, DefKind::Import, imp.id);
+                // }
             }
 
             ast::Item::Struct(strct) => {

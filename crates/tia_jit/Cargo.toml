@@ -5,4 +5,5 @@ edition = "2024"
 
 [dependencies]
 arteziac = { path = "../arteziac" }
+artezia_diag = { path = "../artezia_diag" }
 inkwell = { version = "0.9.0", features = ["llvm22-1"] }

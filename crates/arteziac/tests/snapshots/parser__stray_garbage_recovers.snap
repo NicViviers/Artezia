@@ -51,5 +51,6 @@ File {
         label: None,
         notes: [],
         code: None,
+        secondary: [],
     },
 ]
