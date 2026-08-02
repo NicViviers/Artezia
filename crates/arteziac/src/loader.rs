@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::{Path, PathBuf}};
+use std::{collections::{HashMap, HashSet}, path::{Path, PathBuf}};
 
 use artezia_diag::{Diagnostic, Severity, Span, SourceMap};
 
@@ -14,7 +14,7 @@ pub fn load(entry: &Path, stdlib_root: &Path) -> LoadResult {
     let mut map = SourceMap::new();
     let mut diags = Vec::new();
     let mut items: Vec<ast::Item> = Vec::new();
-    let mut loaded: HashMap<PathBuf, ()> = HashMap::new();
+    let mut loaded: HashSet<PathBuf> = HashSet::new();
     let mut next_id: u32 = 0;
 
     let mut queue: Vec<(PathBuf, Option<Span>)> = vec![(entry.to_path_buf(), None)];
@@ -35,7 +35,7 @@ pub fn load(entry: &Path, stdlib_root: &Path) -> LoadResult {
         };
 
         // Handles cycles and diamond imports
-        if loaded.contains_key(&canon) { continue; }
+        if !loaded.insert(canon.clone()) { continue; }
 
         let text = match std::fs::read_to_string(&canon) {
             Ok(t) => t,

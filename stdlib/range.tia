@@ -1,0 +1,28 @@
+// TODO: This doesn't compile for some reason. Inside the Rng.contains method
+struct Rng {
+    start: Int,
+    end: Int,
+    inclusive: Bool
+}
+
+func Rng.new(start: Int, end: Int, inclusive: Bool) -> Rng {
+    return Rng { start: start, end: end, inclusive: inclusive };
+}
+
+func Rng.contains(mut self, item: Int) -> Bool {
+    if self.inclusive == true {
+        for i in self.start ..= self.end {
+            if i == item {
+                return true;
+            }
+        }
+    } else {
+        for i in self.start .. self.end {
+            if i == item {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}

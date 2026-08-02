@@ -682,7 +682,7 @@ impl Parser {
             None
         };
 
-        if receiver.is_none() {
+        if receiver.is_some() {
             self.eat(Token::Comma);
         }
 

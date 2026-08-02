@@ -1,0 +1,15 @@
+struct Rng {
+    start: Int,
+    end: Int,
+    inclusive: Bool
+}
+
+func Rng.contains(self, item: Int) -> Bool {
+    return item;
+}
+
+func main() -> Int {
+    let r = Rng { start: 0, end: 10, inclusive: true };
+
+    return 0;
+}
